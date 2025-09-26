@@ -159,15 +159,15 @@ const CustomerView: React.FC = () => {
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
 
 
-    const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedServiceId(e.target.value);
-        setSelectedEmployeeId(null);
+    const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedEmployeeId(e.target.value);
+        setSelectedServiceId(null);
         setSelectedTime(null);
         setStep(2);
     };
 
-    const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSelectedEmployeeId(e.target.value);
+    const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedServiceId(e.target.value);
         setSelectedTime(null);
         setStep(3);
     };
@@ -177,7 +177,6 @@ const CustomerView: React.FC = () => {
         if (isDayAvailable(newDate)) {
             setSelectedDate(newDate);
             setSelectedTime(null);
-            setStep(4);
         }
     };
     
@@ -189,10 +188,12 @@ const CustomerView: React.FC = () => {
         return settings.businessHours[dayOfWeek].enabled && date >= today;
     }, [settings]);
 
-    const availableEmployees = useMemo(() => {
-        if (!selectedServiceId) return [];
-        return employees.filter(emp => emp.serviceIds.includes(selectedServiceId));
-    }, [selectedServiceId, employees]);
+    const availableServices = useMemo(() => {
+        if (!selectedEmployeeId) return [];
+        const employee = employees.find(emp => emp.id === selectedEmployeeId);
+        if (!employee) return [];
+        return services.filter(service => employee.serviceIds.includes(service.id));
+    }, [selectedEmployeeId, employees, services]);
 
     const availableTimeSlots = useMemo(() => {
         if (!selectedDate || !selectedServiceId || !selectedEmployeeId || !settings) return [];
@@ -392,26 +393,26 @@ const CustomerView: React.FC = () => {
             <p className="text-center text-lg text-gray-600 mb-8">Simples, rápido e fácil.</p>
             
             <div className="space-y-6">
-                {/* Step 1: Client Info & Service */}
+                {/* Step 1: Client Info & Employee */}
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500 ${step >= 1 ? 'opacity-100' : 'opacity-50'}`}>
-                    <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>1</span>Informações e Serviço</h2>
+                    <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>1</span>Informações e Profissional</h2>
                     <div className="grid md:grid-cols-2 gap-4">
                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Seu nome" className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}/>
                         <input type="text" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value)} placeholder="Seu WhatsApp" className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}/>
                     </div>
-                     <select value={selectedServiceId || ''} onChange={handleServiceChange} className="mt-4 w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties} disabled={!customerName || !customerWhatsapp}>
-                        <option value="">Selecione um serviço</option>
-                        {services.map(s => <option key={s.id} value={s.id}>{s.name} - R${s.price.toFixed(2)}</option>)}
+                     <select value={selectedEmployeeId || ''} onChange={handleEmployeeChange} className="mt-4 w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties} disabled={!customerName || !customerWhatsapp}>
+                        <option value="">Selecione um profissional</option>
+                        {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                     </select>
                 </div>
 
-                {/* Step 2: Employee */}
+                {/* Step 2: Service */}
                 {step >= 2 && (
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500 ${step >= 2 ? 'opacity-100' : 'opacity-50'}`}>
-                    <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>2</span>Profissional</h2>
-                     <select value={selectedEmployeeId || ''} onChange={handleEmployeeChange} className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}>
-                        <option value="">Selecione um profissional</option>
-                        {availableEmployees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>2</span>Serviço</h2>
+                     <select value={selectedServiceId || ''} onChange={handleServiceChange} className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}>
+                        <option value="">Selecione um serviço</option>
+                        {availableServices.map(s => <option key={s.id} value={s.id}>{s.name} - R${s.price.toFixed(2)}</option>)}
                     </select>
                 </div>
                 )}
