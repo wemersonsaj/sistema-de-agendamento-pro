@@ -1,5 +1,5 @@
 import { Service, Employee, Appointment, AppSettings } from '../types';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../src/integrations/supabase/client';
 import { INITIAL_SETTINGS } from '../data/initialData';
 
 // --- Error Handling ---
