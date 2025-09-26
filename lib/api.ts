@@ -1,139 +1,208 @@
 import { Service, Employee, Appointment, AppSettings } from '../types';
-import { INITIAL_SERVICES, INITIAL_EMPLOYEES, INITIAL_APPOINTMENTS, INITIAL_SETTINGS } from '../data/initialData';
+import { supabase } from '../integrations/supabase/client';
+import { INITIAL_SETTINGS } from '../data/initialData';
 
-// Helper to simulate async operations
-const simulateLatency = <T,>(data: T): Promise<T> => 
-    new Promise(resolve => setTimeout(() => resolve(data), 250));
-
-// Generic function to get data from localStorage or initialize it
-const getData = <T,>(key: string, initialData: T): T => {
-    try {
-        const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item) : initialData;
-    } catch (error) {
-        console.error(`Error reading ${key} from localStorage`, error);
-        return initialData;
-    }
+// --- Error Handling ---
+const handleSupabaseError = (error: any, context: string) => {
+    console.error(`Supabase error in ${context}:`, error);
+    throw new Error(`Failed to ${context}. Please check the console for details.`);
 };
-
-// Generic function to save data to localStorage
-const saveData = <T,>(key: string, data: T): void => {
-    try {
-        window.localStorage.setItem(key, JSON.stringify(data));
-    } catch (error) {
-        console.error(`Error saving ${key} to localStorage`, error);
-    }
-};
-
-// Initialize data if it doesn't exist
-const initializeData = () => {
-    if (!localStorage.getItem('app_services')) {
-        saveData('app_services', INITIAL_SERVICES);
-    }
-    if (!localStorage.getItem('app_employees')) {
-        saveData('app_employees', INITIAL_EMPLOYEES);
-    }
-    if (!localStorage.getItem('app_appointments')) {
-        saveData('app_appointments', INITIAL_APPOINTMENTS);
-    }
-    if (!localStorage.getItem('app_settings')) {
-        saveData('app_settings', INITIAL_SETTINGS);
-    }
-};
-
-initializeData();
 
 // --- Services API ---
 export const getServices = async (): Promise<Service[]> => {
-    const services = getData<Service[]>('app_services', INITIAL_SERVICES);
-    return simulateLatency(services);
+    const { data, error } = await supabase.from('services').select('*');
+    if (error) handleSupabaseError(error, 'fetch services');
+    return data || [];
 };
 
 export const addService = async (serviceData: Omit<Service, 'id'>): Promise<Service> => {
-    const services = await getServices();
-    const newService: Service = { ...serviceData, id: Date.now().toString() };
-    const updatedServices = [...services, newService];
-    saveData('app_services', updatedServices);
-    return simulateLatency(newService);
+    const { data, error } = await supabase.from('services').insert(serviceData).select().single();
+    if (error) handleSupabaseError(error, 'add service');
+    return data;
 };
 
 export const updateService = async (serviceData: Service): Promise<Service> => {
-    const services = await getServices();
-    const updatedServices = services.map(s => s.id === serviceData.id ? serviceData : s);
-    saveData('app_services', updatedServices);
-    return simulateLatency(serviceData);
+    const { id, ...updateData } = serviceData;
+    const { data, error } = await supabase.from('services').update(updateData).eq('id', id).select().single();
+    if (error) handleSupabaseError(error, 'update service');
+    return data;
 };
 
 export const deleteService = async (id: string): Promise<void> => {
-    const services = await getServices();
-    const updatedServices = services.filter(s => s.id !== id);
-    saveData('app_services', updatedServices);
-    return simulateLatency(undefined);
+    const { error } = await supabase.from('services').delete().eq('id', id);
+    if (error) handleSupabaseError(error, 'delete service');
 };
 
 // --- Employees API ---
 export const getEmployees = async (): Promise<Employee[]> => {
-    const employees = getData<Employee[]>('app_employees', INITIAL_EMPLOYEES);
-    return simulateLatency(employees);
+    const { data, error } = await supabase.from('employees').select(`
+        id,
+        name,
+        employee_services ( service_id )
+    `);
+    if (error) handleSupabaseError(error, 'fetch employees');
+    
+    return data ? data.map(emp => ({
+        id: emp.id,
+        name: emp.name,
+        serviceIds: emp.employee_services.map((es: any) => es.service_id)
+    })) : [];
 };
 
 export const addEmployee = async (employeeData: Omit<Employee, 'id'>): Promise<Employee> => {
-    const employees = await getEmployees();
-    const newEmployee: Employee = { ...employeeData, id: Date.now().toString() };
-    const updatedEmployees = [...employees, newEmployee];
-    saveData('app_employees', updatedEmployees);
-    return simulateLatency(newEmployee);
+    const { name, serviceIds } = employeeData;
+    
+    const { data: newEmployee, error: employeeError } = await supabase.from('employees').insert({ name }).select().single();
+    if (employeeError || !newEmployee) handleSupabaseError(employeeError, 'add employee name');
+
+    if (serviceIds && serviceIds.length > 0) {
+        const relations = serviceIds.map(service_id => ({
+            employee_id: newEmployee.id,
+            service_id
+        }));
+        const { error: relationError } = await supabase.from('employee_services').insert(relations);
+        if (relationError) handleSupabaseError(relationError, 'add employee services');
+    }
+    
+    return { ...newEmployee, serviceIds };
 };
 
 export const updateEmployee = async (employeeData: Employee): Promise<Employee> => {
-    const employees = await getEmployees();
-    const updatedEmployees = employees.map(e => e.id === employeeData.id ? employeeData : e);
-    saveData('app_employees', updatedEmployees);
-    return simulateLatency(employeeData);
+    const { id, name, serviceIds } = employeeData;
+
+    const { error: employeeError } = await supabase.from('employees').update({ name }).eq('id', id);
+    if (employeeError) handleSupabaseError(employeeError, 'update employee name');
+
+    const { error: deleteError } = await supabase.from('employee_services').delete().eq('employee_id', id);
+    if (deleteError) handleSupabaseError(deleteError, 'delete old employee services');
+
+    if (serviceIds && serviceIds.length > 0) {
+        const relations = serviceIds.map(service_id => ({
+            employee_id: id,
+            service_id
+        }));
+        const { error: insertError } = await supabase.from('employee_services').insert(relations);
+        if (insertError) handleSupabaseError(insertError, 'add new employee services');
+    }
+
+    return employeeData;
 };
 
 export const deleteEmployee = async (id: string): Promise<void> => {
-    const employees = await getEmployees();
-    const updatedEmployees = employees.filter(e => e.id !== id);
-    saveData('app_employees', updatedEmployees);
-    return simulateLatency(undefined);
+    const { error: relationError } = await supabase.from('employee_services').delete().eq('employee_id', id);
+    if (relationError) handleSupabaseError(relationError, 'delete employee services');
+
+    const { error: employeeError } = await supabase.from('employees').delete().eq('id', id);
+    if (employeeError) handleSupabaseError(employeeError, 'delete employee');
 };
 
 // --- Appointments API ---
 export const getAppointments = async (): Promise<Appointment[]> => {
-    const appointments = getData<Appointment[]>('app_appointments', INITIAL_APPOINTMENTS);
-    return simulateLatency(appointments);
+    const { data, error } = await supabase.from('appointments').select('*');
+    if (error) handleSupabaseError(error, 'fetch appointments');
+    return data ? data.map(apt => ({
+        id: apt.id,
+        customerName: apt.customer_name,
+        customerWhatsapp: apt.customer_whatsapp,
+        serviceId: apt.service_id,
+        employeeId: apt.employee_id,
+        date: apt.date,
+        time: apt.time,
+    })) : [];
 };
 
 export const addAppointment = async (appointmentData: Omit<Appointment, 'id'>): Promise<Appointment> => {
-    const appointments = await getAppointments();
-    const newAppointment: Appointment = { ...appointmentData, id: Date.now().toString() };
-    const updatedAppointments = [...appointments, newAppointment];
-    saveData('app_appointments', updatedAppointments);
-    return simulateLatency(newAppointment);
+    const { customerName, customerWhatsapp, serviceId, employeeId, date, time } = appointmentData;
+    const payload = {
+        customer_name: customerName,
+        customer_whatsapp: customerWhatsapp,
+        service_id: serviceId,
+        employee_id: employeeId,
+        date,
+        time
+    };
+    const { data, error } = await supabase.from('appointments').insert(payload).select().single();
+    if (error || !data) handleSupabaseError(error, 'add appointment');
+    
+    return {
+        id: data.id,
+        customerName: data.customer_name,
+        customerWhatsapp: data.customer_whatsapp,
+        serviceId: data.service_id,
+        employeeId: data.employee_id,
+        date: data.date,
+        time: data.time,
+    };
 };
 
 export const updateAppointment = async (appointmentData: Appointment): Promise<Appointment> => {
-    const appointments = await getAppointments();
-    const updatedAppointments = appointments.map(a => a.id === appointmentData.id ? appointmentData : a);
-    saveData('app_appointments', updatedAppointments);
-    return simulateLatency(appointmentData);
+    const { id, customerName, customerWhatsapp, serviceId, employeeId, date, time } = appointmentData;
+    const payload = {
+        customer_name: customerName,
+        customer_whatsapp: customerWhatsapp,
+        service_id: serviceId,
+        employee_id: employeeId,
+        date,
+        time
+    };
+    const { data, error } = await supabase.from('appointments').update(payload).eq('id', id).select().single();
+    if (error || !data) handleSupabaseError(error, 'update appointment');
+    
+    return {
+        id: data.id,
+        customerName: data.customer_name,
+        customerWhatsapp: data.customer_whatsapp,
+        serviceId: data.service_id,
+        employeeId: data.employee_id,
+        date: data.date,
+        time: data.time,
+    };
 };
 
 export const deleteAppointment = async (id: string): Promise<void> => {
-    const appointments = await getAppointments();
-    const updatedAppointments = appointments.filter(a => a.id !== id);
-    saveData('app_appointments', updatedAppointments);
-    return simulateLatency(undefined);
+    const { error } = await supabase.from('appointments').delete().eq('id', id);
+    if (error) handleSupabaseError(error, 'delete appointment');
 };
 
 // --- Settings API ---
 export const getSettings = async (): Promise<AppSettings> => {
-    const settings = getData<AppSettings>('app_settings', INITIAL_SETTINGS);
-    return simulateLatency(settings);
+    let { data, error } = await supabase.from('settings').select('*').eq('id', 1).single();
+    
+    if (error && error.code === 'PGRST116') { // No settings row found
+        console.log('No settings found, creating initial settings.');
+        const { data: newSettings, error: insertError } = await supabase.from('settings').insert({ 
+            id: 1, 
+            business_hours: INITIAL_SETTINGS.businessHours,
+            socials: INITIAL_SETTINGS.socials,
+            visuals: INITIAL_SETTINGS.visuals,
+        }).select().single();
+        if (insertError) handleSupabaseError(insertError, 'create initial settings');
+        data = newSettings;
+    } else if (error) {
+        handleSupabaseError(error, 'fetch settings');
+    }
+    
+    if (!data) return INITIAL_SETTINGS;
+
+    return {
+        businessHours: data.business_hours,
+        socials: data.socials,
+        visuals: data.visuals,
+    };
 };
 
 export const updateSettings = async (settingsData: AppSettings): Promise<AppSettings> => {
-    saveData('app_settings', settingsData);
-    return simulateLatency(settingsData);
+    const payload = {
+        business_hours: settingsData.businessHours,
+        socials: settingsData.socials,
+        visuals: settingsData.visuals,
+    };
+    const { data, error } = await supabase.from('settings').update(payload).eq('id', 1).select().single();
+    if (error || !data) handleSupabaseError(error, 'update settings');
+    
+    return {
+        businessHours: data.business_hours,
+        socials: data.socials,
+        visuals: data.visuals,
+    };
 };
