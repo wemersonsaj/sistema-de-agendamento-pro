@@ -1,13 +1,17 @@
-import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
 import * as api from './lib/api';
 import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon } from './components/icons';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import ProtectedRoute from './src/components/ProtectedRoute';
+import Login from './src/pages/Login';
 
-// --- App Context ---
-const AppContext = createContext<AppContextType | null>(null);
+// --- App Context (Data) ---
+const AppContext = React.createContext<AppContextType | null>(null);
 
 const useAppContext = () => {
-    const context = useContext(AppContext);
+    const context = React.useContext(AppContext);
     if (!context) {
         throw new Error('useAppContext must be used within an AppProvider');
     }
@@ -15,13 +19,13 @@ const useAppContext = () => {
 };
 
 const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [services, setServices] = useState<Service[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [settings, setSettings] = useState<AppSettings | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [services, setServices] = React.useState<Service[]>([]);
+    const [employees, setEmployees] = React.useState<Employee[]>([]);
+    const [appointments, setAppointments] = React.useState<Appointment[]>([]);
+    const [settings, setSettings] = React.useState<AppSettings | null>(null);
+    const [loading, setLoading] = React.useState(true);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
@@ -44,7 +48,6 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         loadData();
     }, []);
     
-    // --- API Wrappers ---
     const addService = async (data: Omit<Service, 'id'>) => {
         const newService = await api.addService(data);
         setServices(prev => [...prev, newService]);
@@ -91,26 +94,15 @@ const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     };
 
     const contextValue: AppContextType = {
-        services,
-        employees,
-        appointments,
-        settings,
-        loading,
-        addService,
-        updateService,
-        deleteService,
-        addEmployee,
-        updateEmployee,
-        deleteEmployee,
-        addAppointment,
-        updateAppointment,
-        deleteAppointment,
+        services, employees, appointments, settings, loading,
+        addService, updateService, deleteService,
+        addEmployee, updateEmployee, deleteEmployee,
+        addAppointment, updateAppointment, deleteAppointment,
         updateSettings
     };
 
     return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 };
-
 
 // --- MODAL COMPONENT ---
 interface ModalProps {
@@ -121,7 +113,6 @@ interface ModalProps {
 }
 const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
             <div className="rounded-lg shadow-xl w-full max-w-lg bg-white text-gray-900">
@@ -131,33 +122,27 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
                         <XIcon className="w-6 h-6" />
                     </button>
                 </div>
-                <div className="p-6">
-                    {children}
-                </div>
+                <div className="p-6">{children}</div>
             </div>
         </div>
     );
 };
 
-
-// --- CUSTOMER VIEW ---
+// --- CUSTOMER VIEW (INDEX PAGE) ---
 const CustomerView: React.FC = () => {
     const { services, employees, appointments, settings, addAppointment } = useAppContext();
-
-    const [step, setStep] = useState(1);
-    const [customerName, setCustomerName] = useState('');
-    const [customerWhatsapp, setCustomerWhatsapp] = useState('');
-    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-    const [selectedTime, setSelectedTime] = useState<string | null>(null);
-    const [isConfirmationModalOpen, setConfirmationModalOpen] = useState(false);
-    const [lastAppointment, setLastAppointment] = useState<Appointment | null>(null);
-    const [isBooking, setIsBooking] = useState(false);
-    
-    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-
+    const [step, setStep] = React.useState(1);
+    const [customerName, setCustomerName] = React.useState('');
+    const [customerWhatsapp, setCustomerWhatsapp] = React.useState('');
+    const [selectedServiceId, setSelectedServiceId] = React.useState<string | null>(null);
+    const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string | null>(null);
+    const [selectedDate, setSelectedDate] = React.useState<Date | null>(new Date());
+    const [selectedTime, setSelectedTime] = React.useState<string | null>(null);
+    const [isConfirmationModalOpen, setConfirmationModalOpen] = React.useState(false);
+    const [lastAppointment, setLastAppointment] = React.useState<Appointment | null>(null);
+    const [isBooking, setIsBooking] = React.useState(false);
+    const [currentMonth, setCurrentMonth] = React.useState(new Date().getMonth());
+    const [currentYear, setCurrentYear] = React.useState(new Date().getFullYear());
 
     const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setSelectedEmployeeId(e.target.value);
@@ -180,7 +165,7 @@ const CustomerView: React.FC = () => {
         }
     };
     
-    const isDayAvailable = useCallback((date: Date): boolean => {
+    const isDayAvailable = React.useCallback((date: Date): boolean => {
         if (!settings) return false;
         const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()] as keyof typeof settings.businessHours;
         const today = new Date();
@@ -188,41 +173,31 @@ const CustomerView: React.FC = () => {
         return settings.businessHours[dayOfWeek].enabled && date >= today;
     }, [settings]);
 
-    const availableServices = useMemo(() => {
+    const availableServices = React.useMemo(() => {
         if (!selectedEmployeeId) return [];
         const employee = employees.find(emp => emp.id === selectedEmployeeId);
         if (!employee) return [];
         return services.filter(service => employee.serviceIds.includes(service.id));
     }, [selectedEmployeeId, employees, services]);
 
-    const availableTimeSlots = useMemo(() => {
+    const availableTimeSlots = React.useMemo(() => {
         if (!selectedDate || !selectedServiceId || !selectedEmployeeId || !settings) return [];
-
         const dayOfWeek = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][selectedDate.getDay()] as keyof typeof settings.businessHours;
         const daySettings = settings.businessHours[dayOfWeek];
         if (!daySettings.enabled) return [];
-
         const service = services.find(s => s.id === selectedServiceId);
         if (!service) return [];
-
         const slots = [];
         const serviceDuration = service.duration;
         const dayStart = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.start}`);
         const dayEnd = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.end}`);
         const lunchStart = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchStart}`);
         const lunchEnd = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchEnd}`);
-
-        const employeeAppointments = appointments.filter(apt =>
-            apt.employeeId === selectedEmployeeId &&
-            apt.date === selectedDate.toISOString().split('T')[0]
-        );
-        
+        const employeeAppointments = appointments.filter(apt => apt.employeeId === selectedEmployeeId && apt.date === selectedDate.toISOString().split('T')[0]);
         let currentTime = dayStart;
-
         while (currentTime.getTime() + serviceDuration * 60000 <= dayEnd.getTime()) {
             const slotStart = new Date(currentTime);
             const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-
             const isDuringLunch = (slotStart < lunchEnd && slotEnd > lunchStart);
             const isBooked = employeeAppointments.some(apt => {
                 const aptService = services.find(s => s.id === apt.serviceId);
@@ -232,11 +207,10 @@ const CustomerView: React.FC = () => {
                 return (slotStart < aptEnd && slotEnd > aptStart);
             });
             const isPast = new Date() > slotStart;
-
             if (!isDuringLunch && !isBooked && !isPast) {
                 slots.push(slotStart.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
             }
-            currentTime.setMinutes(currentTime.getMinutes() + 15); // Check every 15 minutes
+            currentTime.setMinutes(currentTime.getMinutes() + 15);
         }
         return slots;
     }, [selectedDate, selectedServiceId, selectedEmployeeId, appointments, services, settings]);
@@ -248,25 +222,11 @@ const CustomerView: React.FC = () => {
         }
         setIsBooking(true);
         try {
-            const appointmentData = {
-                customerName,
-                customerWhatsapp,
-                serviceId: selectedServiceId,
-                employeeId: selectedEmployeeId,
-                date: selectedDate.toISOString().split('T')[0],
-                time: selectedTime,
-            };
+            const appointmentData = { customerName, customerWhatsapp, serviceId: selectedServiceId, employeeId: selectedEmployeeId, date: selectedDate.toISOString().split('T')[0], time: selectedTime };
             const newAppointment = await addAppointment(appointmentData);
             setLastAppointment(newAppointment);
             setConfirmationModalOpen(true);
-            // Reset form
-            setStep(1);
-            setCustomerName('');
-            setCustomerWhatsapp('');
-            setSelectedServiceId(null);
-            setSelectedEmployeeId(null);
-            setSelectedDate(new Date());
-            setSelectedTime(null);
+            setStep(1); setCustomerName(''); setCustomerWhatsapp(''); setSelectedServiceId(null); setSelectedEmployeeId(null); setSelectedDate(new Date()); setSelectedTime(null);
         } catch (error) {
             console.error("Failed to confirm appointment:", error);
             alert("Ocorreu um erro ao agendar. Tente novamente.");
@@ -281,35 +241,18 @@ const CustomerView: React.FC = () => {
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const weeks: (number | null)[][] = [];
         let week: (number | null)[] = Array(firstDay).fill(null);
-
         for (let day = 1; day <= daysInMonth; day++) {
             week.push(day);
-            if (week.length === 7) {
-                weeks.push(week);
-                week = [];
-            }
+            if (week.length === 7) { weeks.push(week); week = []; }
         }
-        if (week.length > 0) {
-            week.push(...Array(7 - week.length).fill(null));
-            weeks.push(week);
-        }
-
+        if (week.length > 0) { week.push(...Array(7 - week.length).fill(null)); weeks.push(week); }
         const monthName = new Date(currentYear, currentMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-
         return (
             <div className="mt-4">
                 <div className="flex justify-between items-center mb-2">
-                    <button onClick={() => {
-                        const newDate = new Date(currentYear, currentMonth - 1);
-                        setCurrentMonth(newDate.getMonth());
-                        setCurrentYear(newDate.getFullYear());
-                    }}><ChevronLeftIcon className="w-6 h-6" /></button>
+                    <button onClick={() => { const newDate = new Date(currentYear, currentMonth - 1); setCurrentMonth(newDate.getMonth()); setCurrentYear(newDate.getFullYear()); }}><ChevronLeftIcon className="w-6 h-6" /></button>
                     <span className="font-bold text-lg capitalize">{monthName}</span>
-                    <button onClick={() => {
-                        const newDate = new Date(currentYear, currentMonth + 1);
-                        setCurrentMonth(newDate.getMonth());
-                        setCurrentYear(newDate.getFullYear());
-                    }}><ChevronRightIcon className="w-6 h-6" /></button>
+                    <button onClick={() => { const newDate = new Date(currentYear, currentMonth + 1); setCurrentMonth(newDate.getMonth()); setCurrentYear(newDate.getFullYear()); }}><ChevronRightIcon className="w-6 h-6" /></button>
                 </div>
                 <div className="grid grid-cols-7 gap-2 text-center">
                     {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, i) => <div key={i} className="font-semibold text-sm text-gray-600">{day}</div>)}
@@ -318,26 +261,13 @@ const CustomerView: React.FC = () => {
                         const isToday = dayDate && dayDate.toDateString() === new Date().toDateString();
                         const isSelected = dayDate && selectedDate && dayDate.toDateString() === selectedDate.toDateString();
                         const isAvailable = dayDate && isDayAvailable(dayDate);
-                        
                         let dayClasses = "p-2 rounded-full cursor-pointer transition-colors";
-                        if (day === null) {
-                            dayClasses = "p-2";
-                        } else if (isSelected) {
-                            dayClasses += ` text-white`;
-                            dayClasses += ` bg-[${settings?.visuals.primaryColor}]`;
-                        } else if (isToday) {
-                            dayClasses += " border border-gray-400";
-                        } else if (isAvailable) {
-                            dayClasses += ` hover:bg-gray-200`;
-                        } else {
-                            dayClasses += " text-gray-400 cursor-not-allowed";
-                        }
-
-                        return (
-                            <div key={i} onClick={() => day && handleDateSelect(day)} className={dayClasses}>
-                                {day}
-                            </div>
-                        );
+                        if (day === null) dayClasses = "p-2";
+                        else if (isSelected) dayClasses += ` text-white bg-[${settings?.visuals.primaryColor}]`;
+                        else if (isToday) dayClasses += " border border-gray-400";
+                        else if (isAvailable) dayClasses += ` hover:bg-gray-200`;
+                        else dayClasses += " text-gray-400 cursor-not-allowed";
+                        return <div key={i} onClick={() => day && handleDateSelect(day)} className={dayClasses}>{day}</div>;
                     })}
                 </div>
             </div>
@@ -349,14 +279,11 @@ const CustomerView: React.FC = () => {
         const service = services.find(s => s.id === lastAppointment.serviceId);
         const employee = employees.find(e => e.id === lastAppointment.employeeId);
         const date = new Date(`${lastAppointment.date}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
         return (
             <Modal isOpen={isConfirmationModalOpen} onClose={() => setConfirmationModalOpen(false)} title="Agendamento Confirmado!">
                 <div className="space-y-4">
                     <div className="text-center">
-                        <span style={{ color: settings.visuals.primaryColor }}>
-                            <CheckCircleIcon className="w-16 h-16 mx-auto"/>
-                        </span>
+                        <span style={{ color: settings.visuals.primaryColor }}><CheckCircleIcon className="w-16 h-16 mx-auto"/></span>
                         <h2 className="text-2xl font-bold mt-2">Obrigado, {lastAppointment.customerName}!</h2>
                         <p className="text-gray-600">Seu horário foi confirmado com sucesso.</p>
                     </div>
@@ -366,19 +293,13 @@ const CustomerView: React.FC = () => {
                         <p><strong>Data:</strong> <span className="capitalize">{date}</span></p>
                         <p><strong>Horário:</strong> {lastAppointment.time}</p>
                     </div>
-                     <div className="flex items-start space-x-2 text-gray-700">
-                        <span style={{ color: settings.visuals.primaryColor }}>
-                            <MapPinIcon className="w-5 h-5 mt-1 flex-shrink-0" />
-                        </span>
+                    <div className="flex items-start space-x-2 text-gray-700">
+                        <span style={{ color: settings.visuals.primaryColor }}><MapPinIcon className="w-5 h-5 mt-1 flex-shrink-0" /></span>
                         <p>{settings.socials.address}</p>
                     </div>
                     <div className="flex justify-center space-x-4 pt-4">
-                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}>
-                            <WhatsAppIcon className="w-10 h-10" />
-                        </a>
-                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}>
-                            <InstagramIcon className="w-10 h-10" />
-                        </a>
+                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><WhatsAppIcon className="w-10 h-10" /></a>
+                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><InstagramIcon className="w-10 h-10" /></a>
                     </div>
                 </div>
             </Modal>
@@ -391,33 +312,27 @@ const CustomerView: React.FC = () => {
         <div className="max-w-4xl mx-auto p-4 md:p-8">
             <h1 className="text-4xl font-bold text-center mb-2" style={{ color: settings.visuals.primaryColor }}>Agende seu Horário</h1>
             <p className="text-center text-lg text-gray-600 mb-8">Simples, rápido e fácil.</p>
-            
             <div className="space-y-6">
-                {/* Step 1: Client Info & Employee */}
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500 ${step >= 1 ? 'opacity-100' : 'opacity-50'}`}>
                     <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>1</span>Informações e Profissional</h2>
                     <div className="grid md:grid-cols-2 gap-4">
                         <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Seu nome" className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}/>
                         <input type="text" value={customerWhatsapp} onChange={e => setCustomerWhatsapp(e.target.value)} placeholder="Seu WhatsApp" className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}/>
                     </div>
-                     <select value={selectedEmployeeId || ''} onChange={handleEmployeeChange} className="mt-4 w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties} disabled={!customerName || !customerWhatsapp}>
+                    <select value={selectedEmployeeId || ''} onChange={handleEmployeeChange} className="mt-4 w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties} disabled={!customerName || !customerWhatsapp}>
                         <option value="">Selecione um profissional</option>
                         {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                     </select>
                 </div>
-
-                {/* Step 2: Service */}
                 {step >= 2 && (
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500 ${step >= 2 ? 'opacity-100' : 'opacity-50'}`}>
                     <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>2</span>Serviço</h2>
-                     <select value={selectedServiceId || ''} onChange={handleServiceChange} className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}>
+                    <select value={selectedServiceId || ''} onChange={handleServiceChange} className="w-full p-3 rounded bg-gray-50 border border-gray-300 text-gray-900 focus:outline-none focus:ring-2" style={{'--tw-ring-color': settings.visuals.primaryColor} as React.CSSProperties}>
                         <option value="">Selecione um serviço</option>
                         {availableServices.map(s => <option key={s.id} value={s.id}>{s.name} - R${s.price.toFixed(2)}</option>)}
                     </select>
                 </div>
                 )}
-                
-                {/* Step 3: Date & Time */}
                 {step >= 3 && (
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500 ${step >= 3 ? 'opacity-100' : 'opacity-50'}`}>
                     <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>3</span>Data e Hora</h2>
@@ -427,22 +342,14 @@ const CustomerView: React.FC = () => {
                             <h3 className="font-bold text-lg text-center mb-2">Horários disponíveis</h3>
                             <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
                                {availableTimeSlots.length > 0 ? availableTimeSlots.map(time => (
-                                    <button 
-                                        key={time} 
-                                        onClick={() => { setSelectedTime(time); setStep(4); }}
-                                        className={`p-2 text-center rounded transition-colors ${selectedTime === time ? `text-white bg-[${settings.visuals.primaryColor}]` : `bg-gray-100 text-gray-900 hover:bg-gray-200`}`}
-                                    >
-                                        {time}
-                                    </button>
+                                    <button key={time} onClick={() => { setSelectedTime(time); setStep(4); }} className={`p-2 text-center rounded transition-colors ${selectedTime === time ? `text-white bg-[${settings.visuals.primaryColor}]` : `bg-gray-100 text-gray-900 hover:bg-gray-200`}`}>{time}</button>
                                 )) : <p className="col-span-3 text-center text-gray-400 mt-4">Nenhum horário disponível.</p>}
                             </div>
                        </div>
                     </div>
                 </div>
                 )}
-
-                {/* Step 4: Confirmation */}
-                 {step >= 4 && selectedTime && (
+                {step >= 4 && selectedTime && (
                 <div className={`p-6 rounded-lg shadow-lg border border-gray-200 bg-white transition-all duration-500`}>
                     <h2 className="text-2xl font-semibold mb-4 flex items-center"><span className="flex items-center justify-center w-8 h-8 rounded-full mr-3 text-white" style={{ backgroundColor: settings.visuals.primaryColor }}>4</span>Confirmar</h2>
                     <div className="bg-gray-100 p-4 rounded-md space-y-1">
@@ -462,19 +369,15 @@ const CustomerView: React.FC = () => {
     );
 };
 
-// --- ADMIN VIEW ---
+// --- ADMIN VIEW (ADMIN PAGE) ---
 const AdminView = () => {
     type AdminTab = 'appointments' | 'schedule' | 'reports' | 'services' | 'employees' | 'settings';
-    const [activeTab, setActiveTab] = useState<AdminTab>('appointments');
+    const [activeTab, setActiveTab] = React.useState<AdminTab>('appointments');
     const { services, employees, appointments, settings, deleteService, deleteEmployee, deleteAppointment, addService, updateService, addEmployee, updateEmployee, addAppointment, updateAppointment, updateSettings } = useAppContext();
-    
-    // Generic CRUD state
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<any | null>(null);
-    const [modalType, setModalType] = useState<'service' | 'employee' | 'appointment' | null>(null);
-
-    // Filter state for reports
-    const [reportFilter, setReportFilter] = useState({ startDate: '', endDate: '' });
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState<any | null>(null);
+    const [modalType, setModalType] = React.useState<'service' | 'employee' | 'appointment' | null>(null);
+    const [reportFilter, setReportFilter] = React.useState({ startDate: '', endDate: '' });
 
     const handleOpenModal = (type: 'service' | 'employee' | 'appointment', item: any | null = null) => {
         setModalType(type);
@@ -504,15 +407,12 @@ const AdminView = () => {
 
     const AdminModal: React.FC = () => {
         if (!modalType) return null;
-
-        const [formData, setFormData] = useState(editingItem || {});
-        const [isSubmitting, setIsSubmitting] = useState(false);
+        const [formData, setFormData] = React.useState(editingItem || {});
+        const [isSubmitting, setIsSubmitting] = React.useState(false);
         
-        useEffect(() => {
-            if (editingItem) {
-                setFormData(editingItem);
-            } else {
-                 // Set default structure for new items
+        React.useEffect(() => {
+            if (editingItem) setFormData(editingItem);
+            else {
                 switch (modalType) {
                     case 'service': setFormData({ name: '', description: '', duration: 30, price: 0 }); break;
                     case 'employee': setFormData({ name: '', serviceIds: [] }); break;
@@ -521,23 +421,16 @@ const AdminView = () => {
             }
         }, [editingItem, modalType]);
 
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-            setFormData({ ...formData, [e.target.name]: e.target.value });
-        };
-        
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setFormData({ ...formData, [e.target.name]: e.target.value });
         const handleEmployeeServiceChange = (serviceId: string) => {
             const currentIds = formData.serviceIds || [];
-            if (currentIds.includes(serviceId)) {
-                setFormData({ ...formData, serviceIds: currentIds.filter((id: string) => id !== serviceId) });
-            } else {
-                setFormData({ ...formData, serviceIds: [...currentIds, serviceId] });
-            }
+            if (currentIds.includes(serviceId)) setFormData({ ...formData, serviceIds: currentIds.filter((id: string) => id !== serviceId) });
+            else setFormData({ ...formData, serviceIds: [...currentIds, serviceId] });
         };
 
         const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setIsSubmitting(true);
-            
             try {
                 switch(modalType) {
                     case 'service': 
@@ -560,53 +453,44 @@ const AdminView = () => {
             }
         };
         
-        const title = `${editingItem ? 'Editar' : 'Adicionar'} ${
-            {service: 'Serviço', employee: 'Funcionário', appointment: 'Agendamento'}[modalType]
-        }`;
-
+        const title = `${editingItem ? 'Editar' : 'Adicionar'} ${{service: 'Serviço', employee: 'Funcionário', appointment: 'Agendamento'}[modalType]}`;
         return (
             <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={title}>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {modalType === 'service' && (
-                        <>
-                            <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Nome do Serviço" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <textarea name="description" value={formData.description || ''} onChange={handleChange} placeholder="Descrição" className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <input name="duration" type="number" value={formData.duration || ''} onChange={handleChange} placeholder="Duração (minutos)" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <input name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} placeholder="Preço" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                        </>
-                    )}
-                    {modalType === 'employee' && (
-                        <>
-                            <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Nome do Funcionário" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <div>
-                                <label className="block mb-2 font-semibold">Serviços Prestados:</label>
-                                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
-                                    {services.map(s => (
-                                        <label key={s.id} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
-                                            <input type="checkbox" checked={(formData.serviceIds || []).includes(s.id)} onChange={() => handleEmployeeServiceChange(s.id)} className="form-checkbox h-5 w-5" style={{ color: settings?.visuals.primaryColor }}/>
-                                            <span>{s.name}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                    {modalType === 'service' && (<>
+                        <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Nome do Serviço" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <textarea name="description" value={formData.description || ''} onChange={handleChange} placeholder="Descrição" className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <input name="duration" type="number" value={formData.duration || ''} onChange={handleChange} placeholder="Duração (minutos)" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <input name="price" type="number" step="0.01" value={formData.price || ''} onChange={handleChange} placeholder="Preço" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                    </>)}
+                    {modalType === 'employee' && (<>
+                        <input name="name" value={formData.name || ''} onChange={handleChange} placeholder="Nome do Funcionário" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <div>
+                            <label className="block mb-2 font-semibold">Serviços Prestados:</label>
+                            <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                                {services.map(s => (
+                                    <label key={s.id} className="flex items-center space-x-2 p-2 bg-gray-100 rounded">
+                                        <input type="checkbox" checked={(formData.serviceIds || []).includes(s.id)} onChange={() => handleEmployeeServiceChange(s.id)} className="form-checkbox h-5 w-5" style={{ color: settings?.visuals.primaryColor }}/>
+                                        <span>{s.name}</span>
+                                    </label>
+                                ))}
                             </div>
-                        </>
-                    )}
-                     {modalType === 'appointment' && (
-                        <>
-                            <input name="customerName" value={formData.customerName || ''} onChange={handleChange} placeholder="Nome do Cliente" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <input name="customerWhatsapp" value={formData.customerWhatsapp || ''} onChange={handleChange} placeholder="WhatsApp do Cliente" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
-                            <select name="serviceId" value={formData.serviceId || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900">
-                                <option value="">Selecione o Serviço</option>
-                                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                            </select>
-                            <select name="employeeId" value={formData.employeeId || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900">
-                                <option value="">Selecione o Funcionário</option>
-                                {employees.filter(e => !formData.serviceId || e.serviceIds.includes(formData.serviceId)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                            </select>
-                            <input name="date" type="date" value={formData.date || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                            <input name="time" type="time" value={formData.time || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                        </>
-                    )}
+                        </div>
+                    </>)}
+                    {modalType === 'appointment' && (<>
+                        <input name="customerName" value={formData.customerName || ''} onChange={handleChange} placeholder="Nome do Cliente" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <input name="customerWhatsapp" value={formData.customerWhatsapp || ''} onChange={handleChange} placeholder="WhatsApp do Cliente" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"/>
+                        <select name="serviceId" value={formData.serviceId || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900">
+                            <option value="">Selecione o Serviço</option>
+                            {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                        <select name="employeeId" value={formData.employeeId || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900">
+                            <option value="">Selecione o Funcionário</option>
+                            {employees.filter(e => !formData.serviceId || e.serviceIds.includes(formData.serviceId)).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                        <input name="date" type="date" value={formData.date || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                        <input name="time" type="time" value={formData.time || ''} onChange={handleChange} required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                    </>)}
                     <button type="submit" disabled={isSubmitting} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings?.visuals.primaryColor }}>{isSubmitting ? 'Salvando...' : 'Salvar'}</button>
                 </form>
             </Modal>
@@ -614,44 +498,21 @@ const AdminView = () => {
     };
     
     const SettingsComponent = () => {
-        const [currentSettings, setCurrentSettings] = useState(settings);
-        const [isSaving, setIsSaving] = useState(false);
-
-        useEffect(() => {
-            setCurrentSettings(settings);
-        }, [settings]);
-
+        const [currentSettings, setCurrentSettings] = React.useState(settings);
+        const [isSaving, setIsSaving] = React.useState(false);
+        React.useEffect(() => { setCurrentSettings(settings); }, [settings]);
         if (!currentSettings) return null;
-
-        const handleVisualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            setCurrentSettings(s => s ? ({...s, visuals: {...s.visuals, [e.target.name]: e.target.value }}) : null);
-        };
-
-        const handleSocialChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            setCurrentSettings(s => s ? ({...s, socials: {...s.socials, [e.target.name]: e.target.value }}) : null);
-        };
-        
-        const handleHoursChange = (day: keyof typeof settings.businessHours, field: keyof typeof settings.businessHours.sun, value: string | boolean) => {
-            setCurrentSettings(s => s ? ({
-                ...s,
-                businessHours: {
-                    ...s.businessHours,
-                    [day]: { ...s.businessHours[day], [field]: value }
-                }
-            }) : null);
-        };
-
+        const handleVisualChange = (e: React.ChangeEvent<HTMLInputElement>) => setCurrentSettings(s => s ? ({...s, visuals: {...s.visuals, [e.target.name]: e.target.value }}) : null);
+        const handleSocialChange = (e: React.ChangeEvent<HTMLInputElement>) => setCurrentSettings(s => s ? ({...s, socials: {...s.socials, [e.target.name]: e.target.value }}) : null);
+        const handleHoursChange = (day: keyof typeof settings.businessHours, field: keyof typeof settings.businessHours.sun, value: string | boolean) => setCurrentSettings(s => s ? ({ ...s, businessHours: { ...s.businessHours, [day]: { ...s.businessHours[day], [field]: value } } }) : null);
         const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onloadend = () => {
-                    setCurrentSettings(s => s ? ({...s, visuals: {...s.visuals, logo: reader.result as string }}) : null);
-                };
+                reader.onloadend = () => setCurrentSettings(s => s ? ({...s, visuals: {...s.visuals, logo: reader.result as string }}) : null);
                 reader.readAsDataURL(file);
             }
         };
-
         const saveSettings = async () => {
             if (!currentSettings) return;
             setIsSaving(true);
@@ -665,12 +526,9 @@ const AdminView = () => {
                 setIsSaving(false);
             }
         };
-
         const daysOfWeek = { sun: 'Domingo', mon: 'Segunda', tue: 'Terça', wed: 'Quarta', thu: 'Quinta', fri: 'Sexta', sat: 'Sábado' };
-        
         return (
             <div className="space-y-8">
-                {/* Business Hours */}
                 <div>
                     <h3 className="text-xl font-semibold mb-4">Funcionamento</h3>
                     <div className="space-y-4">
@@ -680,20 +538,16 @@ const AdminView = () => {
                                      <input type="checkbox" checked={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].enabled} onChange={(e) => handleHoursChange(day as any, 'enabled', e.target.checked)} className="mr-2 h-5 w-5" style={{ accentColor: settings?.visuals.primaryColor }} />
                                     {daysOfWeek[day as keyof typeof daysOfWeek]}
                                 </label>
-                                {currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].enabled && (
-                                    <>
-                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].start} onChange={e => handleHoursChange(day as any, 'start', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].end} onChange={e => handleHoursChange(day as any, 'end', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchStart} onChange={e => handleHoursChange(day as any, 'lunchStart', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnd} onChange={e => handleHoursChange(day as any, 'lunchEnd', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                    </>
-                                )}
+                                {currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].enabled && (<>
+                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].start} onChange={e => handleHoursChange(day as any, 'start', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].end} onChange={e => handleHoursChange(day as any, 'end', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchStart} onChange={e => handleHoursChange(day as any, 'lunchStart', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnd} onChange={e => handleHoursChange(day as any, 'lunchEnd', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                </>)}
                             </div>
                         ))}
                     </div>
                 </div>
-
-                {/* Socials & Address */}
                 <div>
                     <h3 className="text-xl font-semibold mb-4">Redes Sociais e Endereço</h3>
                     <div className="space-y-4">
@@ -702,8 +556,6 @@ const AdminView = () => {
                         <input name="address" value={currentSettings.socials.address} onChange={handleSocialChange} placeholder="Endereço Completo" className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
                     </div>
                 </div>
-
-                {/* Visuals */}
                 <div>
                     <h3 className="text-xl font-semibold mb-4">Visual</h3>
                     <div className="space-y-4">
@@ -718,17 +570,13 @@ const AdminView = () => {
                         </div>
                     </div>
                 </div>
-                
                 <button onClick={saveSettings} disabled={isSaving} className="w-full text-white font-bold py-3 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings?.visuals.primaryColor }}>{isSaving ? 'Salvando...' : 'Salvar Configurações'}</button>
             </div>
         );
     };
 
-    const sortedAppointments = useMemo(() => 
-        [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()),
-    [appointments]);
-    
-    const filteredAppointments = useMemo(() => {
+    const sortedAppointments = React.useMemo(() => [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()), [appointments]);
+    const filteredAppointments = React.useMemo(() => {
         if (!reportFilter.startDate || !reportFilter.endDate) return sortedAppointments;
         const start = new Date(reportFilter.startDate + 'T00:00:00');
         const end = new Date(reportFilter.endDate + 'T23:59:59');
@@ -737,7 +585,6 @@ const AdminView = () => {
             return aptDate >= start && aptDate <= end;
         });
     }, [sortedAppointments, reportFilter]);
-
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -756,11 +603,7 @@ const AdminView = () => {
                         )}
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="border-b border-gray-300">
-                                    <tr>
-                                        <th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th>{activeTab === 'appointments' && <th className="p-2">Ações</th>}
-                                    </tr>
-                                </thead>
+                                <thead className="border-b border-gray-300"><tr><th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th>{activeTab === 'appointments' && <th className="p-2">Ações</th>}</tr></thead>
                                 <tbody>
                                     {appointmentsToDisplay.map(apt => (
                                         <tr key={apt.id} className="border-b border-gray-200">
@@ -769,9 +612,7 @@ const AdminView = () => {
                                             <td className="p-2">{services.find(s => s.id === apt.serviceId)?.name || 'N/A'}</td>
                                             <td className="p-2">{employees.find(e => e.id === apt.employeeId)?.name || 'N/A'}</td>
                                             {activeTab === 'appointments' && <td className="p-2 flex space-x-2">
-                                                <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700">
-                                                    <WhatsAppIcon className="w-5 h-5"/>
-                                                </a>
+                                                <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700"><WhatsAppIcon className="w-5 h-5"/></a>
                                                 <button onClick={() => handleOpenModal('appointment', apt)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
                                                 <button onClick={() => handleDelete('appointment', apt.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
                                             </td>}
@@ -782,44 +623,10 @@ const AdminView = () => {
                         </div>
                     </div>
                 );
-            case 'schedule':
-                return <CustomerView />; // Re-use the customer view for manual scheduling
-            case 'services':
-                return (
-                    <div className="space-y-4">
-                        {services.map(s => (
-                            <div key={s.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
-                                <div>
-                                    <p className="font-bold">{s.name} (R${s.price.toFixed(2)})</p>
-                                    <p className="text-sm text-gray-500">{s.description} - {s.duration} min</p>
-                                </div>
-                                <div className="flex space-x-2">
-                                    <button onClick={() => handleOpenModal('service', s)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => handleDelete('service', s.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            case 'employees':
-                 return (
-                    <div className="space-y-4">
-                        {employees.map(e => (
-                            <div key={e.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
-                                <div>
-                                    <p className="font-bold">{e.name}</p>
-                                    <p className="text-sm text-gray-500">{e.serviceIds.map(id => services.find(s => s.id === id)?.name).join(', ')}</p>
-                                </div>
-                                <div className="flex space-x-2">
-                                    <button onClick={() => handleOpenModal('employee', e)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => handleDelete('employee', e.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            case 'settings':
-                return <SettingsComponent />;
+            case 'schedule': return <CustomerView />;
+            case 'services': return (<div className="space-y-4">{services.map(s => (<div key={s.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{s.name} (R${s.price.toFixed(2)})</p><p className="text-sm text-gray-500">{s.description} - {s.duration} min</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('service', s)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('service', s.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
+            case 'employees': return (<div className="space-y-4">{employees.map(e => (<div key={e.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{e.name}</p><p className="text-sm text-gray-500">{e.serviceIds.map(id => services.find(s => s.id === id)?.name).join(', ')}</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('employee', e)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('employee', e.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
+            case 'settings': return <SettingsComponent />;
             default: return null;
         }
     };
@@ -830,7 +637,7 @@ const AdminView = () => {
         { id: 'appointments', label: 'Agendamentos', icon: <ClipboardListIcon className="w-5 h-5 mr-2" /> },
         { id: 'schedule', label: 'Agendar', icon: <PlusIcon className="w-5 h-5 mr-2" /> },
         { id: 'reports', label: 'Relatórios', icon: <ChartBarIcon className="w-5 h-5 mr-2" /> },
-        { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00-5.86 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
+        { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
         { id: 'employees', label: 'Funcionários', icon: <UsersIcon className="w-5 h-5 mr-2" /> },
         { id: 'settings', label: 'Configurações', icon: <CogIcon className="w-5 h-5 mr-2" /> },
     ];
@@ -844,16 +651,7 @@ const AdminView = () => {
                 <aside className="md:w-1/4 lg:w-1/5">
                     <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible -mx-4 px-4 md:m-0 md:p-0 space-x-2 md:space-x-0 md:space-y-2">
                         {tabs.map(tab => (
-                             <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as AdminTab)}
-                                className={`flex items-center text-left p-3 rounded-md transition-colors w-full whitespace-nowrap ${
-                                    activeTab === tab.id ? `text-white shadow` : 'text-gray-700 hover:bg-gray-100'
-                                }`}
-                                style={{ backgroundColor: activeTab === tab.id ? settings.visuals.primaryColor : 'transparent' }}
-                            >
-                                {tab.icon} {tab.label}
-                            </button>
+                             <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`flex items-center text-left p-3 rounded-md transition-colors w-full whitespace-nowrap ${activeTab === tab.id ? `text-white shadow` : 'text-gray-700 hover:bg-gray-100'}`} style={{ backgroundColor: activeTab === tab.id ? settings.visuals.primaryColor : 'transparent' }}>{tab.icon} {tab.label}</button>
                         ))}
                     </nav>
                 </aside>
@@ -861,14 +659,10 @@ const AdminView = () => {
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-semibold text-gray-800">{getTabTitle()}</h2>
                         {['services', 'employees', 'appointments'].includes(activeTab) && (
-                            <button onClick={() => handleOpenModal(activeTab.slice(0, -1) as any, null)} className="flex items-center text-white font-bold py-2 px-4 rounded shadow" style={{ backgroundColor: settings.visuals.primaryColor }}>
-                                <PlusIcon className="w-5 h-5 mr-1"/> Adicionar
-                            </button>
+                            <button onClick={() => handleOpenModal(activeTab.slice(0, -1) as any, null)} className="flex items-center text-white font-bold py-2 px-4 rounded shadow" style={{ backgroundColor: settings.visuals.primaryColor }}><PlusIcon className="w-5 h-5 mr-1"/> Adicionar</button>
                         )}
                     </div>
-                    <div className="p-6 rounded-lg shadow-lg border border-gray-200 bg-white">
-                        {renderTabContent()}
-                    </div>
+                    <div className="p-6 rounded-lg shadow-lg border border-gray-200 bg-white">{renderTabContent()}</div>
                 </main>
             </div>
             <AdminModal />
@@ -876,98 +670,67 @@ const AdminView = () => {
     );
 };
 
+// --- LAYOUT COMPONENT ---
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { settings, loading } = useAppContext();
+    const { session, signOut } = useAuth();
+    const location = useLocation();
+    const isLoginPage = location.pathname === '/login';
+
+    React.useEffect(() => {
+        document.body.style.backgroundColor = isLoginPage ? '#f9fafb' : '#FFFFFF';
+        document.body.style.color = '#1f2937';
+    }, [isLoginPage]);
+
+    if (loading) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-xl font-semibold">Carregando...</div></div>;
+    }
+    if (!settings && !isLoginPage) {
+        return <div className="flex justify-center items-center min-h-screen"><div className="text-xl font-semibold text-red-500">Erro ao carregar as configurações.</div></div>;
+    }
+
+    return (
+        <div className="min-h-screen">
+            {!isLoginPage && settings && (
+                <header className="py-4 px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
+                    <div className="flex items-center space-x-3">
+                        {settings.visuals.logo && <img src={settings.visuals.logo} alt="Logo" className="h-10 w-auto bg-white p-1 rounded" />}
+                        <h1 className="text-2xl font-bold" style={{ color: settings.visuals.primaryColor }}>{settings.visuals.companyName}</h1>
+                    </div>
+                    <div className="flex items-center space-x-6">
+                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><WhatsAppIcon className="w-6 h-6" /></a>
+                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><InstagramIcon className="w-6 h-6" /></a>
+                        {session ? (
+                            <button onClick={signOut} className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm text-white shadow-lg`} style={{ backgroundColor: settings.visuals.primaryColor }}>Sair</button>
+                        ) : (
+                            <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
+                                <Link to="/" className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname === '/' ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname === '/' ? settings.visuals.primaryColor : 'transparent' }}>Cliente</Link>
+                                <Link to="/admin" className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname.startsWith('/admin') ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname.startsWith('/admin') ? settings.visuals.primaryColor : 'transparent' }}>Admin</Link>
+                            </div>
+                        )}
+                    </div>
+                </header>
+            )}
+            <main>{children}</main>
+        </div>
+    );
+};
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
-    const [view, setView] = useState<'customer' | 'admin'>('customer');
-
-    useEffect(() => {
-        document.body.style.backgroundColor = '#FFFFFF';
-        document.body.style.color = '#1f2937';
-    }, []);
-    
     return (
-        <AppProvider>
-            <AppContent setView={setView} view={view} />
-        </AppProvider>
-    );
-}
-
-// Separate content to access context
-const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'customer' | 'admin') => void}> = ({ view, setView }) => {
-    const { settings, loading } = useAppContext();
-
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-xl font-semibold">Carregando...</div>
-            </div>
-        );
-    }
-
-    if (!settings) {
-         return (
-            <div className="flex justify-center items-center min-h-screen">
-                <div className="text-xl font-semibold text-red-500">Erro ao carregar as configurações.</div>
-            </div>
-        );
-    }
-    
-    return (
-        <div className="min-h-screen">
-            <header className="py-4 px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
-                 <div className="flex items-center space-x-3">
-                    {settings.visuals.logo && <img src={settings.visuals.logo} alt="Logo" className="h-10 w-auto bg-white p-1 rounded" />}
-                    <h1 className="text-2xl font-bold" style={{ color: settings.visuals.primaryColor }}>
-                        {settings.visuals.companyName}
-                    </h1>
-                </div>
-                <div className="flex items-center space-x-6">
-                    <div className="flex items-center space-x-4">
-                        <a 
-                            href={settings.socials.whatsapp} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            title="WhatsApp" 
-                            className="text-gray-500 transition-colors" 
-                            onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} 
-                            onMouseOut={e => e.currentTarget.style.color = ''}
-                        >
-                            <WhatsAppIcon className="w-6 h-6" />
-                        </a>
-                        <a 
-                            href={settings.socials.instagram} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            title="Instagram" 
-                            className="text-gray-500 transition-colors" 
-                            onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} 
-                            onMouseOut={e => e.currentTarget.style.color = ''}
-                        >
-                            <InstagramIcon className="w-6 h-6" />
-                        </a>
-                    </div>
-                    <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
-                        <button
-                            onClick={() => setView('customer')}
-                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                            style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
-                        >
-                            Cliente
-                        </button>
-                        <button
-                            onClick={() => setView('admin')}
-                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                            style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
-                        >
-                            Admin
-                        </button>
-                    </div>
-                </div>
-            </header>
-            <main>
-                {view === 'customer' ? <CustomerView /> : <AdminView />}
-            </main>
-        </div>
+        <BrowserRouter>
+            <AuthProvider>
+                <AppProvider>
+                    <AppLayout>
+                        <Routes>
+                            <Route path="/" element={<CustomerView />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/admin" element={<ProtectedRoute><AdminView /></ProtectedRoute>} />
+                        </Routes>
+                    </AppLayout>
+                </AppProvider>
+            </AuthProvider>
+        </BrowserRouter>
     );
 }
