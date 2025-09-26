@@ -1,10 +1,116 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Appointment, AppSettings } from './types';
-import { AppProvider, useAppContext } from './src/context/AppContext';
-import { supabase } from './src/integrations/supabase/client';
-import { Session } from '@supabase/supabase-js';
-import LoginPage from './src/pages/Login';
+import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react';
+import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
+import * as api from './lib/api';
 import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon } from './components/icons';
+
+// --- App Context ---
+const AppContext = createContext<AppContextType | null>(null);
+
+const useAppContext = () => {
+    const context = useContext(AppContext);
+    if (!context) {
+        throw new Error('useAppContext must be used within an AppProvider');
+    }
+    return context;
+};
+
+const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [services, setServices] = useState<Service[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [settings, setSettings] = useState<AppSettings | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                const [servicesData, employeesData, appointmentsData, settingsData] = await Promise.all([
+                    api.getServices(),
+                    api.getEmployees(),
+                    api.getAppointments(),
+                    api.getSettings(),
+                ]);
+                setServices(servicesData);
+                setEmployees(employeesData);
+                setAppointments(appointmentsData);
+                setSettings(settingsData);
+            } catch (error) {
+                console.error("Failed to load initial data", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
+    }, []);
+    
+    // --- API Wrappers ---
+    const addService = async (data: Omit<Service, 'id'>) => {
+        const newService = await api.addService(data);
+        setServices(prev => [...prev, newService]);
+    };
+    const updateService = async (data: Service) => {
+        const updatedService = await api.updateService(data);
+        setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
+    };
+    const deleteService = async (id: string) => {
+        await api.deleteService(id);
+        setServices(prev => prev.filter(s => s.id !== id));
+    };
+    
+    const addEmployee = async (data: Omit<Employee, 'id'>) => {
+        const newEmployee = await api.addEmployee(data);
+        setEmployees(prev => [...prev, newEmployee]);
+    };
+    const updateEmployee = async (data: Employee) => {
+        const updatedEmployee = await api.updateEmployee(data);
+        setEmployees(prev => prev.map(e => e.id === updatedEmployee.id ? updatedEmployee : e));
+    };
+    const deleteEmployee = async (id: string) => {
+        await api.deleteEmployee(id);
+        setEmployees(prev => prev.filter(e => e.id !== id));
+    };
+    
+    const addAppointment = async (data: Omit<Appointment, 'id'>) => {
+        const newAppointment = await api.addAppointment(data);
+        setAppointments(prev => [...prev, newAppointment]);
+        return newAppointment;
+    };
+    const updateAppointment = async (data: Appointment) => {
+        const updatedAppointment = await api.updateAppointment(data);
+        setAppointments(prev => prev.map(a => a.id === updatedAppointment.id ? updatedAppointment : a));
+    };
+    const deleteAppointment = async (id: string) => {
+        await api.deleteAppointment(id);
+        setAppointments(prev => prev.filter(a => a.id !== id));
+    };
+    
+    const updateSettings = async (data: AppSettings) => {
+        const updatedSettings = await api.updateSettings(data);
+        setSettings(updatedSettings);
+    };
+
+    const contextValue: AppContextType = {
+        services,
+        employees,
+        appointments,
+        settings,
+        loading,
+        addService,
+        updateService,
+        deleteService,
+        addEmployee,
+        updateEmployee,
+        deleteEmployee,
+        addAppointment,
+        updateAppointment,
+        deleteAppointment,
+        updateSettings
+    };
+
+    return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+};
+
 
 // --- MODAL COMPONENT ---
 interface ModalProps {
@@ -724,7 +830,7 @@ const AdminView = () => {
         { id: 'appointments', label: 'Agendamentos', icon: <ClipboardListIcon className="w-5 h-5 mr-2" /> },
         { id: 'schedule', label: 'Agendar', icon: <PlusIcon className="w-5 h-5 mr-2" /> },
         { id: 'reports', label: 'Relatórios', icon: <ChartBarIcon className="w-5 h-5 mr-2" /> },
-        { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
+        { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00-5.86 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
         { id: 'employees', label: 'Funcionários', icon: <UsersIcon className="w-5 h-5 mr-2" /> },
         { id: 'settings', label: 'Configurações', icon: <CogIcon className="w-5 h-5 mr-2" /> },
     ];
@@ -773,38 +879,23 @@ const AdminView = () => {
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
+    const [view, setView] = useState<'customer' | 'admin'>('customer');
+
+    useEffect(() => {
+        document.body.style.backgroundColor = '#FFFFFF';
+        document.body.style.color = '#1f2937';
+    }, []);
+    
     return (
         <AppProvider>
-            <AppContent />
+            <AppContent setView={setView} view={view} />
         </AppProvider>
     );
 }
 
 // Separate content to access context
-const AppContent: React.FC = () => {
-    const [view, setView] = useState<'customer' | 'admin'>('customer');
-    const [session, setSession] = useState<Session | null>(null);
+const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'customer' | 'admin') => void}> = ({ view, setView }) => {
     const { settings, loading } = useAppContext();
-
-    useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            if (_event === 'SIGNED_IN') {
-                setView('admin');
-            }
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        setView('customer');
-    };
 
     if (loading) {
         return (
@@ -822,16 +913,6 @@ const AppContent: React.FC = () => {
         );
     }
     
-    const renderMainContent = () => {
-        if (view === 'customer') {
-            return <CustomerView />;
-        }
-        if (view === 'admin') {
-            return session ? <AdminView /> : <LoginPage />;
-        }
-        return <CustomerView />;
-    };
-
     return (
         <div className="min-h-screen">
             <header className="py-4 px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
@@ -874,27 +955,18 @@ const AppContent: React.FC = () => {
                         >
                             Cliente
                         </button>
-                        {session ? (
-                             <button
-                                onClick={handleLogout}
-                                className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm text-gray-500`}
-                            >
-                                Sair
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => setView('admin')}
-                                className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                                style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
-                            >
-                                Admin
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setView('admin')}
+                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                            style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
+                        >
+                            Admin
+                        </button>
                     </div>
                 </div>
             </header>
             <main>
-                {renderMainContent()}
+                {view === 'customer' ? <CustomerView /> : <AdminView />}
             </main>
         </div>
     );
