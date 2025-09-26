@@ -1,6 +1,9 @@
 import React, { useState, useEffect, createContext, useContext, useMemo, useCallback } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
 import * as api from './lib/api';
+import { supabase } from './integrations/supabase/client';
+import LoginPage from './pages/Login';
 import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon } from './components/icons';
 
 // --- App Context ---
@@ -879,23 +882,48 @@ const AdminView = () => {
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
-    const [view, setView] = useState<'customer' | 'admin'>('customer');
-
-    useEffect(() => {
-        document.body.style.backgroundColor = '#FFFFFF';
-        document.body.style.color = '#1f2937';
-    }, []);
-    
     return (
         <AppProvider>
-            <AppContent setView={setView} view={view} />
+            <AppContent />
         </AppProvider>
     );
 }
 
 // Separate content to access context
-const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'customer' | 'admin') => void}> = ({ view, setView }) => {
+const AppContent: React.FC = () => {
+    const [view, setView] = useState<'customer' | 'admin' | 'login'>('customer');
+    const [session, setSession] = useState<Session | null>(null);
     const { settings, loading } = useAppContext();
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (_event === 'SIGNED_IN') {
+                setView('admin');
+            }
+            if (_event === 'SIGNED_OUT') {
+                setView('customer');
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const handleAdminClick = () => {
+        if (session) {
+            setView('admin');
+        } else {
+            setView('login');
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+    };
 
     if (loading) {
         return (
@@ -913,6 +941,19 @@ const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'custome
         );
     }
     
+    const renderMainContent = () => {
+        switch (view) {
+            case 'customer':
+                return <CustomerView />;
+            case 'login':
+                return session ? <AdminView /> : <LoginPage />;
+            case 'admin':
+                return session ? <AdminView /> : <LoginPage />;
+            default:
+                return <CustomerView />;
+        }
+    };
+
     return (
         <div className="min-h-screen">
             <header className="py-4 px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
@@ -947,26 +988,53 @@ const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'custome
                             <InstagramIcon className="w-6 h-6" />
                         </a>
                     </div>
-                    <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
-                        <button
-                            onClick={() => setView('customer')}
-                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                            style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
-                        >
-                            Cliente
-                        </button>
-                        <button
-                            onClick={() => setView('admin')}
-                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                            style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
-                        >
-                            Admin
-                        </button>
-                    </div>
+                    {session ? (
+                         <div className="flex items-center space-x-2">
+                            <div className="flex items-center p-1 rounded-lg bg-gray-100">
+                                <button
+                                    onClick={() => setView('customer')}
+                                    className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                                    style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
+                                >
+                                    Cliente
+                                </button>
+                                <button
+                                    onClick={() => setView('admin')}
+                                    className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                                    style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
+                                >
+                                    Admin
+                                </button>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="px-4 py-2 rounded-md font-semibold transition-colors text-sm bg-red-500 text-white hover:bg-red-600"
+                            >
+                                Sair
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
+                            <button
+                                onClick={() => setView('customer')}
+                                className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                                style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
+                            >
+                                Cliente
+                            </button>
+                            <button
+                                onClick={handleAdminClick}
+                                className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'login' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                                style={{ backgroundColor: view === 'login' ? settings.visuals.primaryColor : 'transparent' }}
+                            >
+                                Admin
+                            </button>
+                        </div>
+                    )}
                 </div>
             </header>
             <main>
-                {view === 'customer' ? <CustomerView /> : <AdminView />}
+                {renderMainContent()}
             </main>
         </div>
     );
