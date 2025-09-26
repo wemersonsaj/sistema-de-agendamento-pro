@@ -1,0 +1,5 @@
+{
+  "name": "Sistema de Agendamento Pro",
+  "description": "Uma aplicação de página única para agendamento de serviços, com painel de cliente para marcar horários e um painel administrativo completo para gerenciar o negócio.",
+  "requestFramePermissions": []
+}
