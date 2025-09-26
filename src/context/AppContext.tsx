@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Service, Employee, Appointment, AppSettings, AppContextType } from '../types';
-import * as api from '../lib/api';
+import { Service, Employee, Appointment, AppSettings, AppContextType } from '../../types';
+import * as api from '../../lib/api';
 
 export const AppContext = createContext<AppContextType | null>(null);
 
