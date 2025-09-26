@@ -2,10 +2,11 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
 import * as api from './lib/api';
-import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon } from './components/icons';
+import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon, UserPlusIcon } from './components/icons';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import ProtectedRoute from './src/components/ProtectedRoute';
 import Login from './src/pages/Login';
+import { supabase } from '@/src/integrations/supabase/client';
 
 // --- App Context (Data) ---
 const AppContext = React.createContext<AppContextType | null>(null);
@@ -371,7 +372,7 @@ const CustomerView: React.FC = () => {
 
 // --- ADMIN VIEW (ADMIN PAGE) ---
 const AdminView = () => {
-    type AdminTab = 'appointments' | 'schedule' | 'reports' | 'services' | 'employees' | 'settings';
+    type AdminTab = 'appointments' | 'schedule' | 'reports' | 'services' | 'employees' | 'admins' | 'settings';
     const [activeTab, setActiveTab] = React.useState<AdminTab>('appointments');
     const { services, employees, appointments, settings, deleteService, deleteEmployee, deleteAppointment, addService, updateService, addEmployee, updateEmployee, addAppointment, updateAppointment, updateSettings } = useAppContext();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -575,6 +576,73 @@ const AdminView = () => {
         );
     };
 
+    const AdminUsersComponent = () => {
+        const [email, setEmail] = React.useState('');
+        const [password, setPassword] = React.useState('');
+        const [isSubmitting, setIsSubmitting] = React.useState(false);
+        const [message, setMessage] = React.useState('');
+        const [error, setError] = React.useState('');
+
+        const handleSubmit = async (e: React.FormEvent) => {
+            e.preventDefault();
+            setIsSubmitting(true);
+            setMessage('');
+            setError('');
+
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+            });
+
+            if (error) {
+                setError(`Erro ao criar usuário: ${error.message}`);
+            } else {
+                setMessage(`Convite enviado para ${email}. O novo usuário precisa confirmar o email para poder acessar.`);
+                setEmail('');
+                setPassword('');
+            }
+            setIsSubmitting(false);
+        };
+
+        return (
+            <div>
+                <h3 className="text-xl font-semibold mb-4">Criar Novo Administrador</h3>
+                <p className="mb-4 text-sm text-gray-600">
+                    Isso criará um novo usuário e enviará um email de confirmação. O usuário precisará clicar no link do email para ativar a conta e poder acessar o painel.
+                </p>
+                <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+                    <input 
+                        type="email" 
+                        value={email} 
+                        onChange={e => setEmail(e.target.value)} 
+                        placeholder="Email do novo admin" 
+                        required 
+                        className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"
+                    />
+                    <input 
+                        type="password" 
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        placeholder="Senha (mínimo 6 caracteres)" 
+                        required 
+                        minLength={6}
+                        className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={isSubmitting} 
+                        className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" 
+                        style={{ backgroundColor: settings?.visuals.primaryColor }}
+                    >
+                        {isSubmitting ? 'Enviando convite...' : 'Criar e Enviar Convite'}
+                    </button>
+                </form>
+                {message && <p className="mt-4 text-sm text-green-600 bg-green-100 p-3 rounded">{message}</p>}
+                {error && <p className="mt-4 text-sm text-red-600 bg-red-100 p-3 rounded">{error}</p>}
+            </div>
+        );
+    };
+
     const sortedAppointments = React.useMemo(() => [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()), [appointments]);
     const filteredAppointments = React.useMemo(() => {
         if (!reportFilter.startDate || !reportFilter.endDate) return sortedAppointments;
@@ -626,6 +694,7 @@ const AdminView = () => {
             case 'schedule': return <CustomerView />;
             case 'services': return (<div className="space-y-4">{services.map(s => (<div key={s.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{s.name} (R${s.price.toFixed(2)})</p><p className="text-sm text-gray-500">{s.description} - {s.duration} min</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('service', s)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('service', s.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
             case 'employees': return (<div className="space-y-4">{employees.map(e => (<div key={e.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{e.name}</p><p className="text-sm text-gray-500">{e.serviceIds.map(id => services.find(s => s.id === id)?.name).join(', ')}</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('employee', e)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('employee', e.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
+            case 'admins': return <AdminUsersComponent />;
             case 'settings': return <SettingsComponent />;
             default: return null;
         }
@@ -639,6 +708,7 @@ const AdminView = () => {
         { id: 'reports', label: 'Relatórios', icon: <ChartBarIcon className="w-5 h-5 mr-2" /> },
         { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
         { id: 'employees', label: 'Funcionários', icon: <UsersIcon className="w-5 h-5 mr-2" /> },
+        { id: 'admins', label: 'Administradores', icon: <UserPlusIcon className="w-5 h-5 mr-2" /> },
         { id: 'settings', label: 'Configurações', icon: <CogIcon className="w-5 h-5 mr-2" /> },
     ];
     
