@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext, useContext, useMemo, useCall
 import { Session } from '@supabase/supabase-js';
 import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
 import * as api from './lib/api';
-import { supabase } from './integrations/supabase/client';
+import { supabase } from '@/src/integrations/supabase/client';
 import LoginPage from './pages/Login';
 import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon } from './components/icons';
 
