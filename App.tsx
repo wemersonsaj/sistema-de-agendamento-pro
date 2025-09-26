@@ -373,10 +373,10 @@ const CustomerView: React.FC = () => {
                         <p>{settings.socials.address}</p>
                     </div>
                     <div className="flex justify-center space-x-4 pt-4">
-                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" className={`text-gray-600 hover:text-[${settings.visuals.primaryColor}] transition-colors`}>
+                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}>
                             <WhatsAppIcon className="w-10 h-10" />
                         </a>
-                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" className={`text-gray-600 hover:text-[${settings.visuals.primaryColor}] transition-colors`}>
+                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}>
                             <InstagramIcon className="w-10 h-10" />
                         </a>
                     </div>
@@ -919,21 +919,47 @@ const AppContent: React.FC<{view: 'customer' | 'admin', setView: (view: 'custome
                         {settings.visuals.companyName}
                     </h1>
                 </div>
-                <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
-                    <button
-                        onClick={() => setView('customer')}
-                        className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                        style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
-                    >
-                        Cliente
-                    </button>
-                    <button
-                        onClick={() => setView('admin')}
-                        className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
-                        style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
-                    >
-                        Admin
-                    </button>
+                <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-4">
+                        <a 
+                            href={settings.socials.whatsapp} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="WhatsApp" 
+                            className="text-gray-500 transition-colors" 
+                            onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} 
+                            onMouseOut={e => e.currentTarget.style.color = ''}
+                        >
+                            <WhatsAppIcon className="w-6 h-6" />
+                        </a>
+                        <a 
+                            href={settings.socials.instagram} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            title="Instagram" 
+                            className="text-gray-500 transition-colors" 
+                            onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} 
+                            onMouseOut={e => e.currentTarget.style.color = ''}
+                        >
+                            <InstagramIcon className="w-6 h-6" />
+                        </a>
+                    </div>
+                    <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
+                        <button
+                            onClick={() => setView('customer')}
+                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'customer' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                            style={{ backgroundColor: view === 'customer' ? settings.visuals.primaryColor : 'transparent' }}
+                        >
+                            Cliente
+                        </button>
+                        <button
+                            onClick={() => setView('admin')}
+                            className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${view === 'admin' ? `text-white shadow-lg` : 'text-gray-500'}`}
+                            style={{ backgroundColor: view === 'admin' ? settings.visuals.primaryColor : 'transparent' }}
+                        >
+                            Admin
+                        </button>
+                    </div>
                 </div>
             </header>
             <main>
