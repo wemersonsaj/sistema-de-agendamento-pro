@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import ProtectedRoute from './src/components/ProtectedRoute';
 import Login from './src/pages/Login';
 import { supabase } from '@/src/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 // --- App Context (Data) ---
 const AppContext = React.createContext<AppContextType | null>(null);
@@ -577,22 +578,46 @@ const AdminView = () => {
     };
 
     const AdminUsersComponent = () => {
+        const { session } = useAuth();
         const [email, setEmail] = React.useState('');
         const [password, setPassword] = React.useState('');
         const [isSubmitting, setIsSubmitting] = React.useState(false);
         const [message, setMessage] = React.useState('');
         const [error, setError] = React.useState('');
+        
+        const [users, setUsers] = React.useState<User[]>([]);
+        const [loadingUsers, setLoadingUsers] = React.useState(true);
+        const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
+        const [selectedUser, setSelectedUser] = React.useState<User | null>(null);
+        const [newPassword, setNewPassword] = React.useState('');
+        const [isUpdating, setIsUpdating] = React.useState(false);
 
-        const handleSubmit = async (e: React.FormEvent) => {
+        const fetchUsers = async () => {
+            setLoadingUsers(true);
+            setError('');
+            try {
+                const { data, error } = await supabase.functions.invoke('list-users');
+                if (error) throw error;
+                setUsers(data.users);
+            } catch (err: any) {
+                console.error("Error fetching users:", err);
+                setError("Não foi possível carregar a lista de administradores.");
+            } finally {
+                setLoadingUsers(false);
+            }
+        };
+
+        React.useEffect(() => {
+            fetchUsers();
+        }, []);
+
+        const handleCreateUserSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
             setIsSubmitting(true);
             setMessage('');
             setError('');
 
-            const { error } = await supabase.auth.signUp({
-                email,
-                password,
-            });
+            const { error } = await supabase.auth.signUp({ email, password });
 
             if (error) {
                 setError(`Erro ao criar usuário: ${error.message}`);
@@ -600,8 +625,53 @@ const AdminView = () => {
                 setMessage(`Convite enviado para ${email}. O novo usuário precisa confirmar o email para poder acessar.`);
                 setEmail('');
                 setPassword('');
+                fetchUsers(); // Refresh the list after adding a new user
             }
             setIsSubmitting(false);
+        };
+
+        const handleDeleteUser = async (userId: string) => {
+            if (!window.confirm("Tem certeza que deseja excluir este administrador? Esta ação não pode ser desfeita.")) return;
+            
+            try {
+                const { error } = await supabase.functions.invoke('manage-user', {
+                    method: 'DELETE',
+                    body: { userId }
+                });
+                if (error) throw error;
+                alert("Administrador excluído com sucesso.");
+                fetchUsers(); // Refresh list
+            } catch (err: any) {
+                console.error("Error deleting user:", err);
+                alert(`Ocorreu um erro ao excluir o administrador: ${err.message}`);
+            }
+        };
+
+        const openPasswordModal = (user: User) => {
+            setSelectedUser(user);
+            setNewPassword('');
+            setIsPasswordModalOpen(true);
+        };
+
+        const handlePasswordChange = async (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!selectedUser || !newPassword) return;
+            setIsUpdating(true);
+            try {
+                const { error } = await supabase.functions.invoke('manage-user', {
+                    method: 'PUT',
+                    body: { userId: selectedUser.id, password: newPassword }
+                });
+                if (error) throw error;
+                alert("Senha alterada com sucesso.");
+                setIsPasswordModalOpen(false);
+                setSelectedUser(null);
+            } catch (err: any) {
+                console.error("Error updating password:", err);
+                alert(`Ocorreu um erro ao alterar a senha: ${err.message}`);
+            } finally {
+                setIsUpdating(false);
+            }
         };
 
         return (
@@ -610,35 +680,48 @@ const AdminView = () => {
                 <p className="mb-4 text-sm text-gray-600">
                     Isso criará um novo usuário e enviará um email de confirmação. O usuário precisará clicar no link do email para ativar a conta e poder acessar o painel.
                 </p>
-                <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-                    <input 
-                        type="email" 
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        placeholder="Email do novo admin" 
-                        required 
-                        className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"
-                    />
-                    <input 
-                        type="password" 
-                        value={password} 
-                        onChange={e => setPassword(e.target.value)} 
-                        placeholder="Senha (mínimo 6 caracteres)" 
-                        required 
-                        minLength={6}
-                        className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900"
-                    />
-                    <button 
-                        type="submit" 
-                        disabled={isSubmitting} 
-                        className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" 
-                        style={{ backgroundColor: settings?.visuals.primaryColor }}
-                    >
+                <form onSubmit={handleCreateUserSubmit} className="space-y-4 max-w-md">
+                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email do novo admin" required className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Senha (mínimo 6 caracteres)" required minLength={6} className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                    <button type="submit" disabled={isSubmitting} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings?.visuals.primaryColor }}>
                         {isSubmitting ? 'Enviando convite...' : 'Criar e Enviar Convite'}
                     </button>
                 </form>
                 {message && <p className="mt-4 text-sm text-green-600 bg-green-100 p-3 rounded">{message}</p>}
-                {error && <p className="mt-4 text-sm text-red-600 bg-red-100 p-3 rounded">{error}</p>}
+                
+                <div className="mt-12">
+                    <h3 className="text-xl font-semibold mb-4">Administradores Atuais</h3>
+                    {error && <p className="my-4 text-sm text-red-600 bg-red-100 p-3 rounded">{error}</p>}
+                    {loadingUsers ? <p>Carregando...</p> : (
+                        <div className="space-y-3">
+                            {users.map(user => (
+                                <div key={user.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
+                                    <div>
+                                        <p className="font-semibold">{user.email}</p>
+                                        <p className="text-sm text-gray-500">Criado em: {new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+                                    </div>
+                                    <div className="flex space-x-3">
+                                        <button onClick={() => openPasswordModal(user)} className="text-blue-500 hover:text-blue-700 font-semibold text-sm">Alterar Senha</button>
+                                        {session?.user.id !== user.id ? (
+                                            <button onClick={() => handleDeleteUser(user.id)} className="text-red-500 hover:text-red-700 font-semibold text-sm">Excluir</button>
+                                        ) : (
+                                            <button disabled className="text-gray-400 cursor-not-allowed font-semibold text-sm">Excluir</button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <Modal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} title={`Alterar senha de ${selectedUser?.email}`}>
+                    <form onSubmit={handlePasswordChange} className="space-y-4">
+                        <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nova senha (mínimo 6 caracteres)" required minLength={6} className="w-full p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                        <button type="submit" disabled={isUpdating} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings?.visuals.primaryColor }}>
+                            {isUpdating ? 'Alterando...' : 'Alterar Senha'}
+                        </button>
+                    </form>
+                </Modal>
             </div>
         );
     };
