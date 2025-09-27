@@ -17,13 +17,13 @@ export const INITIAL_APPOINTMENTS: Appointment[] = [];
 
 export const INITIAL_SETTINGS: AppSettings = {
   businessHours: {
-    sun: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: false },
-    mon: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true },
-    tue: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true },
-    wed: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true },
-    thu: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true },
-    fri: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true },
-    sat: { start: '09:00', end: '14:00', lunchStart: '12:00', lunchEnd: '12:00', enabled: true },
+    sun: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: false, lunchEnabled: true },
+    mon: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true, lunchEnabled: true },
+    tue: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true, lunchEnabled: true },
+    wed: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true, lunchEnabled: true },
+    thu: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true, lunchEnabled: true },
+    fri: { start: '09:00', end: '18:00', lunchStart: '12:00', lunchEnd: '13:00', enabled: true, lunchEnabled: true },
+    sat: { start: '09:00', end: '14:00', lunchStart: '12:00', lunchEnd: '12:00', enabled: true, lunchEnabled: false },
   },
   socials: {
     whatsapp: 'https://wa.me/5511999999999',

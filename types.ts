@@ -28,6 +28,7 @@ export interface DayHours {
   lunchStart: string;
   lunchEnd: string;
   enabled: boolean;
+  lunchEnabled: boolean;
 }
 
 export type BusinessHours = {

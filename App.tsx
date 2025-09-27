@@ -193,14 +193,14 @@ const CustomerView: React.FC = () => {
         const serviceDuration = service.duration;
         const dayStart = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.start}`);
         const dayEnd = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.end}`);
-        const lunchStart = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchStart}`);
-        const lunchEnd = new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchEnd}`);
+        const lunchStart = daySettings.lunchEnabled ? new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchStart}`) : null;
+        const lunchEnd = daySettings.lunchEnabled ? new Date(`${selectedDate.toISOString().split('T')[0]}T${daySettings.lunchEnd}`) : null;
         const employeeAppointments = appointments.filter(apt => apt.employeeId === selectedEmployeeId && apt.date === selectedDate.toISOString().split('T')[0]);
         let currentTime = dayStart;
         while (currentTime.getTime() + serviceDuration * 60000 <= dayEnd.getTime()) {
             const slotStart = new Date(currentTime);
             const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
-            const isDuringLunch = (slotStart < lunchEnd && slotEnd > lunchStart);
+            const isDuringLunch = lunchStart && lunchEnd && (slotStart < lunchEnd && slotEnd > lunchStart);
             const isBooked = employeeAppointments.some(apt => {
                 const aptService = services.find(s => s.id === apt.serviceId);
                 if (!aptService) return false;
@@ -586,7 +586,7 @@ const AdminView = () => {
                     <h3 className="text-xl font-semibold mb-4">Funcionamento</h3>
                     <div className="space-y-4">
                         {Object.keys(daysOfWeek).map(day => (
-                            <div key={day} className="grid grid-cols-1 md:grid-cols-5 gap-2 items-center p-3 bg-gray-100 rounded-md">
+                            <div key={day} className="grid grid-cols-1 md:grid-cols-6 gap-2 items-center p-3 bg-gray-100 rounded-md">
                                 <label className="font-semibold capitalize md:col-span-1 flex items-center">
                                      <input type="checkbox" checked={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].enabled} onChange={(e) => handleHoursChange(day as any, 'enabled', e.target.checked)} className="mr-2 h-5 w-5" style={{ accentColor: settings?.visuals.primaryColor }} />
                                     {daysOfWeek[day as keyof typeof daysOfWeek]}
@@ -594,8 +594,14 @@ const AdminView = () => {
                                 {currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].enabled && (<>
                                     <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].start} onChange={e => handleHoursChange(day as any, 'start', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
                                     <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].end} onChange={e => handleHoursChange(day as any, 'end', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchStart} onChange={e => handleHoursChange(day as any, 'lunchStart', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                    <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnd} onChange={e => handleHoursChange(day as any, 'lunchEnd', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                    <label className="flex items-center space-x-2">
+                                        <input type="checkbox" checked={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnabled} onChange={(e) => handleHoursChange(day as any, 'lunchEnabled', e.target.checked)} className="h-5 w-5" style={{ accentColor: settings?.visuals.primaryColor }} />
+                                        <span>Almoço</span>
+                                    </label>
+                                    {currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnabled ? (<>
+                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchStart} onChange={e => handleHoursChange(day as any, 'lunchStart', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                        <input type="time" value={currentSettings.businessHours[day as keyof typeof currentSettings.businessHours].lunchEnd} onChange={e => handleHoursChange(day as any, 'lunchEnd', e.target.value)} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                                    </>) : <div className="md:col-span-2"></div>}
                                 </>)}
                             </div>
                         ))}

@@ -1,4 +1,4 @@
-import { Service, Employee, Appointment, AppSettings } from '../types';
+import { Service, Employee, Appointment, AppSettings, BusinessHours, DayHours } from '../types';
 import { supabase } from '@/src/integrations/supabase/client';
 import { INITIAL_SETTINGS } from '../data/initialData';
 
@@ -185,8 +185,17 @@ export const getSettings = async (): Promise<AppSettings> => {
     
     if (!data) return INITIAL_SETTINGS;
 
+    // Ensure backward compatibility for lunchEnabled property
+    const businessHoursWithDefaults = Object.entries(data.business_hours).reduce((acc, [day, hours]) => {
+        acc[day as keyof BusinessHours] = {
+            ...(hours as DayHours),
+            lunchEnabled: (hours as any).lunchEnabled ?? true, // Default to true if missing
+        };
+        return acc;
+    }, {} as BusinessHours);
+
     return {
-        businessHours: data.business_hours,
+        businessHours: businessHoursWithDefaults,
         socials: data.socials,
         visuals: data.visuals,
         goal: data.goal || null,
