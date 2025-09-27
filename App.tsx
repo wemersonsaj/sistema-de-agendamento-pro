@@ -983,7 +983,20 @@ const AdminView = () => {
         );
     };
 
-    const sortedAppointments = React.useMemo(() => [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()), [appointments]);
+    const sortedAppointments = React.useMemo(() => {
+        const now = new Date().getTime();
+        
+        const futureAppointments = appointments.filter(apt => new Date(`${apt.date}T${apt.time}`).getTime() >= now);
+        const pastAppointments = appointments.filter(apt => new Date(`${apt.date}T${apt.time}`).getTime() < now);
+
+        // Sort future appointments ascending (nearest first)
+        futureAppointments.sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+
+        // Sort past appointments descending (most recent first)
+        pastAppointments.sort((a, b) => new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime());
+
+        return [...futureAppointments, ...pastAppointments];
+    }, [appointments]);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -993,19 +1006,22 @@ const AdminView = () => {
                         <table className="w-full text-left">
                             <thead className="border-b border-gray-300"><tr><th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th><th className="p-2">Ações</th></tr></thead>
                             <tbody>
-                                {sortedAppointments.map(apt => (
-                                    <tr key={apt.id} className="border-b border-gray-200">
-                                        <td className="p-2">{apt.customerName}</td>
-                                        <td className="p-2">{new Date(`${apt.date}T${apt.time}`).toLocaleString('pt-BR')}</td>
-                                        <td className="p-2">{services.find(s => s.id === apt.serviceId)?.name || 'N/A'}</td>
-                                        <td className="p-2">{employees.find(e => e.id === apt.employeeId)?.name || 'N/A'}</td>
-                                        <td className="p-2 flex space-x-2">
-                                            <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700"><WhatsAppIcon className="w-5 h-5"/></a>
-                                            <button onClick={() => handleOpenModal('appointment', apt)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleDelete('appointment', apt.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {sortedAppointments.map(apt => {
+                                    const isPast = new Date(`${apt.date}T${apt.time}`).getTime() < new Date().getTime();
+                                    return (
+                                        <tr key={apt.id} className={`border-b border-gray-200 ${isPast ? 'bg-gray-50 text-gray-500' : ''}`}>
+                                            <td className="p-2">{apt.customerName}</td>
+                                            <td className="p-2">{new Date(`${apt.date}T${apt.time}`).toLocaleString('pt-BR')}</td>
+                                            <td className="p-2">{services.find(s => s.id === apt.serviceId)?.name || 'N/A'}</td>
+                                            <td className="p-2">{employees.find(e => e.id === apt.employeeId)?.name || 'N/A'}</td>
+                                            <td className="p-2 flex space-x-2">
+                                                <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700"><WhatsAppIcon className="w-5 h-5"/></a>
+                                                <button onClick={() => handleOpenModal('appointment', apt)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
+                                                <button onClick={() => handleDelete('appointment', apt.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
