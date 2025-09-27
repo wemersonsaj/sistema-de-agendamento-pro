@@ -222,9 +222,23 @@ const CustomerView: React.FC = () => {
             alert('Por favor, preencha todos os campos.');
             return;
         }
+
+        const formattedDate = selectedDate.toISOString().split('T')[0];
+        const cleanWhatsapp = customerWhatsapp.replace(/\D/g, '');
+
+        const existingAppointment = appointments.find(apt => 
+            apt.date === formattedDate && 
+            apt.customerWhatsapp.replace(/\D/g, '') === cleanWhatsapp
+        );
+
+        if (existingAppointment) {
+            alert('Você já possui um agendamento para este dia. Só é permitido um agendamento por dia por cliente. Para agendar um novo horário, por favor escolha uma data futura.');
+            return;
+        }
+
         setIsBooking(true);
         try {
-            const appointmentData = { customerName, customerWhatsapp, serviceId: selectedServiceId, employeeId: selectedEmployeeId, date: selectedDate.toISOString().split('T')[0], time: selectedTime };
+            const appointmentData = { customerName, customerWhatsapp, serviceId: selectedServiceId, employeeId: selectedEmployeeId, date: formattedDate, time: selectedTime };
             const newAppointment = await addAppointment(appointmentData);
             setLastAppointment(newAppointment);
             setConfirmationModalOpen(true);
