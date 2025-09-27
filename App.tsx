@@ -872,8 +872,6 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <h1 className="text-2xl font-bold hidden sm:block" style={{ color: settings.visuals.primaryColor }}>{settings.visuals.companyName}</h1>
                     </div>
                     <div className="flex items-center space-x-2 sm:space-x-4">
-                        <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><WhatsAppIcon className="w-6 h-6" /></a>
-                        <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><InstagramIcon className="w-6 h-6" /></a>
                         {session ? (
                             <div className="flex items-center space-x-2 sm:space-x-4">
                                 <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
