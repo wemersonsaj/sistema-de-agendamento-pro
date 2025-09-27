@@ -35,4 +35,5 @@ export const INITIAL_SETTINGS: AppSettings = {
     companyName: 'Barbearia Premium',
     primaryColor: '#c026d3', // fuchsia-700
   },
+  goal: null,
 };
