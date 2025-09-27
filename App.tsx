@@ -1000,13 +1000,19 @@ const AdminView = () => {
 
     const renderTabContent = () => {
         switch (activeTab) {
-            case 'appointments':
+            case 'appointments': {
+                const tenMinutesAgo = new Date().getTime() - (10 * 60 * 1000);
+                const visibleAppointments = sortedAppointments.filter(apt => {
+                    const aptTime = new Date(`${apt.date}T${apt.time}`).getTime();
+                    return aptTime >= tenMinutesAgo;
+                });
+
                 return (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="border-b border-gray-300"><tr><th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th><th className="p-2">Ações</th></tr></thead>
                             <tbody>
-                                {sortedAppointments.map(apt => {
+                                {visibleAppointments.map(apt => {
                                     const isPast = new Date(`${apt.date}T${apt.time}`).getTime() < new Date().getTime();
                                     return (
                                         <tr key={apt.id} className={`border-b border-gray-200 ${isPast ? 'bg-gray-50 text-gray-500' : ''}`}>
@@ -1026,6 +1032,7 @@ const AdminView = () => {
                         </table>
                     </div>
                 );
+            }
             case 'reports':
                 return (
                     <div>
