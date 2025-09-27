@@ -175,6 +175,7 @@ export const getSettings = async (): Promise<AppSettings> => {
             business_hours: INITIAL_SETTINGS.businessHours,
             socials: INITIAL_SETTINGS.socials,
             visuals: INITIAL_SETTINGS.visuals,
+            goal: INITIAL_SETTINGS.goal,
         }).select().single();
         if (insertError) handleSupabaseError(insertError, 'create initial settings');
         data = newSettings;
@@ -188,6 +189,7 @@ export const getSettings = async (): Promise<AppSettings> => {
         businessHours: data.business_hours,
         socials: data.socials,
         visuals: data.visuals,
+        goal: data.goal || null,
     };
 };
 
@@ -196,6 +198,7 @@ export const updateSettings = async (settingsData: AppSettings): Promise<AppSett
         business_hours: settingsData.businessHours,
         socials: settingsData.socials,
         visuals: settingsData.visuals,
+        goal: settingsData.goal,
     };
     const { data, error } = await supabase.from('settings').update(payload).eq('id', 1).select().single();
     if (error || !data) handleSupabaseError(error, 'update settings');
@@ -204,5 +207,6 @@ export const updateSettings = async (settingsData: AppSettings): Promise<AppSett
         businessHours: data.business_hours,
         socials: data.socials,
         visuals: data.visuals,
+        goal: data.goal,
     };
 };

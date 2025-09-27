@@ -46,10 +46,17 @@ export interface VisualSettings {
   primaryColor: string;
 }
 
+export interface GoalSettings {
+  target: number;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
+}
+
 export interface AppSettings {
   businessHours: BusinessHours;
   socials: SocialSettings;
   visuals: VisualSettings;
+  goal: GoalSettings | null;
 }
 
 export interface AppContextType {

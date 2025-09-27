@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
 import * as api from './lib/api';
-import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon, UserPlusIcon } from './components/icons';
+import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon, UserPlusIcon, DollarSignIcon } from './components/icons';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import ProtectedRoute from './src/components/ProtectedRoute';
 import Login from './src/pages/Login';
@@ -373,7 +373,7 @@ const CustomerView: React.FC = () => {
 
 // --- ADMIN VIEW (ADMIN PAGE) ---
 const AdminView = () => {
-    type AdminTab = 'appointments' | 'schedule' | 'reports' | 'services' | 'employees' | 'admins' | 'settings';
+    type AdminTab = 'appointments' | 'schedule' | 'reports' | 'services' | 'employees' | 'admins' | 'goals' | 'settings';
     const [activeTab, setActiveTab] = React.useState<AdminTab>('appointments');
     const { services, employees, appointments, settings, deleteService, deleteEmployee, deleteAppointment, addService, updateService, addEmployee, updateEmployee, addAppointment, updateAppointment, updateSettings } = useAppContext();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -763,6 +763,120 @@ const AdminView = () => {
         );
     };
 
+    const GoalComponent = () => {
+        const { settings, appointments, services, updateSettings } = useAppContext();
+        const [target, setTarget] = React.useState(settings?.goal?.target || 1000);
+        const [duration, setDuration] = React.useState(30);
+        const [isSaving, setIsSaving] = React.useState(false);
+    
+        const handleSetGoal = async () => {
+            if (!settings) return;
+            setIsSaving(true);
+            const today = new Date();
+            const endDate = new Date();
+            endDate.setDate(today.getDate() + duration);
+    
+            const newGoal = {
+                target: Number(target),
+                startDate: today.toISOString().split('T')[0],
+                endDate: endDate.toISOString().split('T')[0],
+            };
+    
+            try {
+                await updateSettings({ ...settings, goal: newGoal });
+                alert("Meta definida com sucesso!");
+            } catch (error) {
+                console.error("Failed to set goal", error);
+                alert("Erro ao definir a meta.");
+            } finally {
+                setIsSaving(false);
+            }
+        };
+    
+        const handleClearGoal = async () => {
+            if (!settings || !window.confirm("Tem certeza que deseja apagar a meta atual e definir uma nova?")) return;
+            setIsSaving(true);
+            try {
+                await updateSettings({ ...settings, goal: null });
+            } catch (error) {
+                console.error("Failed to clear goal", error);
+                alert("Erro ao apagar a meta.");
+            } finally {
+                setIsSaving(false);
+            }
+        };
+    
+        const { currentRevenue, daysRemaining, progressPercentage } = React.useMemo(() => {
+            if (!settings?.goal) {
+                return { currentRevenue: 0, daysRemaining: 0, progressPercentage: 0 };
+            }
+    
+            const goalStartDate = new Date(settings.goal.startDate + 'T00:00:00');
+            const goalEndDate = new Date(settings.goal.endDate + 'T23:59:59');
+    
+            const relevantAppointments = appointments.filter(apt => {
+                const aptDate = new Date(`${apt.date}T${apt.time}`);
+                return aptDate >= goalStartDate && aptDate <= goalEndDate;
+            });
+    
+            const revenue = relevantAppointments.reduce((acc, apt) => {
+                const service = services.find(s => s.id === apt.serviceId);
+                return acc + (service ? service.price : 0);
+            }, 0);
+    
+            const today = new Date();
+            const remaining = Math.max(0, Math.ceil((goalEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+    
+            const percentage = settings.goal.target > 0 ? (revenue / settings.goal.target) * 100 : 0;
+    
+            return {
+                currentRevenue: revenue,
+                daysRemaining: remaining,
+                progressPercentage: Math.min(100, percentage),
+            };
+        }, [settings?.goal, appointments, services]);
+    
+        if (!settings) return null;
+    
+        if (settings.goal) {
+            return (
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-xl font-semibold mb-2">Progresso da Meta</h3>
+                        <div className="flex justify-between items-baseline mb-1">
+                            <span className="text-base font-medium text-gray-700">Alcançado</span>
+                            <span className="text-sm font-medium text-gray-700">R$ {currentRevenue.toFixed(2)} / R$ {settings.goal.target.toFixed(2)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div className="h-4 rounded-full" style={{ width: `${progressPercentage}%`, backgroundColor: settings.visuals.primaryColor }}></div>
+                        </div>
+                        <p className="text-right text-sm text-gray-600 mt-2">{daysRemaining} dias restantes</p>
+                    </div>
+                    <button onClick={handleClearGoal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
+                        {isSaving ? 'Apagando...' : 'Definir Nova Meta'}
+                    </button>
+                </div>
+            );
+        }
+    
+        return (
+            <div className="space-y-4">
+                <h3 className="text-xl font-semibold mb-2">Definir Nova Meta de Receita</h3>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Valor da Meta (R$)</label>
+                    <input type="number" value={target} onChange={e => setTarget(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Prazo para alcançar (em dias)</label>
+                    <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
+                </div>
+                <button onClick={handleSetGoal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
+                    {isSaving ? 'Salvando...' : 'Salvar Meta'}
+                </button>
+            </div>
+        );
+    };
+
     const sortedAppointments = React.useMemo(() => [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()), [appointments]);
 
     const renderTabContent = () => {
@@ -824,6 +938,7 @@ const AdminView = () => {
             case 'services': return (<div className="space-y-4">{services.map(s => (<div key={s.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{s.name} (R${s.price.toFixed(2)})</p><p className="text-sm text-gray-500">{s.description} - {s.duration} min</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('service', s)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('service', s.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
             case 'employees': return (<div className="space-y-4">{employees.map(e => (<div key={e.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md"><div><p className="font-bold">{e.name}</p><p className="text-sm text-gray-500">{e.serviceIds.map(id => services.find(s => s.id === id)?.name).join(', ')}</p></div><div className="flex space-x-2"><button onClick={() => handleOpenModal('employee', e)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button><button onClick={() => handleDelete('employee', e.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button></div></div>))}</div>);
             case 'admins': return <AdminUsersComponent />;
+            case 'goals': return <GoalComponent />;
             case 'settings': return <SettingsComponent />;
             default: return null;
         }
@@ -838,6 +953,7 @@ const AdminView = () => {
         { id: 'services', label: 'Serviços', icon: <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg> },
         { id: 'employees', label: 'Funcionários', icon: <UsersIcon className="w-5 h-5 mr-2" /> },
         { id: 'admins', label: 'Administradores', icon: <UserPlusIcon className="w-5 h-5 mr-2" /> },
+        { id: 'goals', label: 'Metas', icon: <DollarSignIcon className="w-5 h-5 mr-2" /> },
         { id: 'settings', label: 'Configurações', icon: <CogIcon className="w-5 h-5 mr-2" /> },
     ];
     
