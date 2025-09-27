@@ -380,6 +380,7 @@ const AdminView = () => {
     const [editingItem, setEditingItem] = React.useState<any | null>(null);
     const [modalType, setModalType] = React.useState<'service' | 'employee' | 'appointment' | null>(null);
     const [reportFilter, setReportFilter] = React.useState({ startDate: '', endDate: '' });
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const handleOpenModal = (type: 'service' | 'employee' | 'appointment', item: any | null = null) => {
         setModalType(type);
@@ -405,6 +406,11 @@ const AdminView = () => {
             console.error(`Failed to delete ${type}`, error);
             alert(`Ocorreu um erro ao excluir.`);
         }
+    };
+
+    const handleTabSelection = (tab: AdminTab) => {
+        setActiveTab(tab);
+        setIsMobileMenuOpen(false);
     };
 
     const AdminModal: React.FC = () => {
@@ -796,15 +802,30 @@ const AdminView = () => {
     ];
     
     const getTabTitle = () => tabs.find(t => t.id === activeTab)?.label || 'Admin';
+    const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
+      <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+    );
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800">Painel Administrativo</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-800">Painel Administrativo</h1>
+                <button className="md:hidden p-2 rounded-md hover:bg-gray-100" onClick={() => setIsMobileMenuOpen(true)}>
+                    <MenuIcon className="w-6 h-6 text-gray-800" />
+                </button>
+            </div>
             <div className="flex flex-col md:flex-row gap-8">
-                <aside className="md:w-1/4 lg:w-1/5">
-                    <nav className="flex flex-row md:flex-col overflow-x-auto md:overflow-x-visible -mx-4 px-4 md:m-0 md:p-0 space-x-2 md:space-x-0 md:space-y-2">
+                {isMobileMenuOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>}
+                <aside className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-40 transform transition-transform duration-300 ease-in-out md:relative md:w-1/4 lg:w-1/5 md:transform-none md:bg-transparent md:shadow-none ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="p-4 flex justify-between items-center md:hidden border-b border-gray-200">
+                        <h2 className="font-bold text-lg" style={{ color: settings?.visuals.primaryColor }}>Menu</h2>
+                        <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 rounded-md hover:bg-gray-100">
+                            <XIcon className="w-6 h-6 text-gray-800" />
+                        </button>
+                    </div>
+                    <nav className="flex flex-col p-4 md:p-0 space-y-2">
                         {tabs.map(tab => (
-                             <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`flex items-center text-left p-3 rounded-md transition-colors w-full whitespace-nowrap ${activeTab === tab.id ? `text-white shadow` : 'text-gray-700 hover:bg-gray-100'}`} style={{ backgroundColor: activeTab === tab.id ? settings.visuals.primaryColor : 'transparent' }}>{tab.icon} {tab.label}</button>
+                             <button key={tab.id} onClick={() => handleTabSelection(tab.id as AdminTab)} className={`flex items-center text-left p-3 rounded-md transition-colors w-full whitespace-nowrap ${activeTab === tab.id ? `text-white shadow` : 'text-gray-700 hover:bg-gray-100'}`} style={{ backgroundColor: activeTab === tab.id ? settings.visuals.primaryColor : 'transparent' }}>{tab.icon} {tab.label}</button>
                         ))}
                     </nav>
                 </aside>
