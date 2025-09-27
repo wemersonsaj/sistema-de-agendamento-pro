@@ -850,17 +850,18 @@ const AdminView = () => {
             }
         };
     
-        const { currentRevenue, daysRemaining, progressPercentage } = React.useMemo(() => {
+        const { currentRevenue, daysRemaining, progressPercentage, totalDuration } = React.useMemo(() => {
             if (!settings?.goal) {
-                return { currentRevenue: 0, daysRemaining: 0, progressPercentage: 0 };
+                return { currentRevenue: 0, daysRemaining: 0, progressPercentage: 0, totalDuration: 0 };
             }
     
             const goalStartDate = new Date(settings.goal.startDate + 'T00:00:00');
-            const goalEndDate = new Date(settings.goal.endDate + 'T23:59:59');
+            const goalEndDate = new Date(settings.goal.endDate + 'T00:00:00');
     
             const relevantAppointments = appointments.filter(apt => {
                 const aptDate = new Date(`${apt.date}T${apt.time}`);
-                return aptDate >= goalStartDate && aptDate <= goalEndDate;
+                const goalEndDateForFilter = new Date(settings.goal!.endDate + 'T23:59:59');
+                return aptDate >= goalStartDate && aptDate <= goalEndDateForFilter;
             });
     
             const revenue = relevantAppointments.reduce((acc, apt) => {
@@ -869,7 +870,12 @@ const AdminView = () => {
             }, 0);
     
             const today = new Date();
-            const remaining = Math.max(0, Math.ceil((goalEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+            today.setHours(0, 0, 0, 0);
+            const goalEndDateForRemaining = new Date(settings.goal.endDate + 'T23:59:59');
+            const remaining = Math.max(0, Math.ceil((goalEndDateForRemaining.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+            
+            const durationInMs = goalEndDate.getTime() - goalStartDate.getTime();
+            const total = Math.round(durationInMs / (1000 * 60 * 60 * 24)) + 1;
     
             const percentage = settings.goal.target > 0 ? (revenue / settings.goal.target) * 100 : 0;
     
@@ -877,6 +883,7 @@ const AdminView = () => {
                 currentRevenue: revenue,
                 daysRemaining: remaining,
                 progressPercentage: Math.min(100, percentage),
+                totalDuration: total,
             };
         }, [settings?.goal, appointments, services]);
     
@@ -885,7 +892,12 @@ const AdminView = () => {
         const renderActiveGoal = () => (
             <div className="space-y-6">
                 <div>
-                    <h3 className="text-xl font-semibold mb-2">Progresso da Meta</h3>
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-xl font-semibold">Progresso da Meta</h3>
+                        <span className="text-sm font-medium text-gray-500">
+                            Meta de {totalDuration} dia{totalDuration > 1 ? 's' : ''}
+                        </span>
+                    </div>
                     <div className="flex justify-between items-baseline mb-1">
                         <span className="text-base font-medium text-gray-700">Alcançado</span>
                         <span className="text-sm font-medium text-gray-700">R$ {currentRevenue.toFixed(2)} / R$ {settings.goal!.target.toFixed(2)}</span>
