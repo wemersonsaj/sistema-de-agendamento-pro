@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Service, Employee, Appointment, AppSettings, AppContextType } from './types';
+import { Service, Employee, Appointment, AppSettings, AppContextType, GoalSettings } from './types';
 import * as api from './lib/api';
 import { WhatsAppIcon, InstagramIcon, TrashIcon, PencilIcon, PlusIcon, ChevronLeftIcon, ChevronRightIcon, CheckCircleIcon, XIcon, MapPinIcon, ClipboardListIcon, CogIcon, UsersIcon, ChartBarIcon, UserPlusIcon, DollarSignIcon } from './components/icons';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
@@ -779,8 +779,10 @@ const AdminView = () => {
 
     const GoalComponent = () => {
         const { settings, appointments, services, updateSettings } = useAppContext();
-        const [target, setTarget] = React.useState(settings?.goal?.target || 1000);
-        const [duration, setDuration] = React.useState(30);
+        const [newTarget, setNewTarget] = React.useState(1000);
+        const [newDuration, setNewDuration] = React.useState(30);
+        const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+        const [editingGoal, setEditingGoal] = React.useState<GoalSettings | null>(null);
         const [isSaving, setIsSaving] = React.useState(false);
     
         const handleSetGoal = async () => {
@@ -788,16 +790,16 @@ const AdminView = () => {
             setIsSaving(true);
             const today = new Date();
             const endDate = new Date();
-            endDate.setDate(today.getDate() + duration);
+            endDate.setDate(today.getDate() + newDuration);
     
-            const newGoal = {
-                target: Number(target),
+            const newGoalData = {
+                target: Number(newTarget),
                 startDate: today.toISOString().split('T')[0],
                 endDate: endDate.toISOString().split('T')[0],
             };
     
             try {
-                await updateSettings({ ...settings, goal: newGoal });
+                await updateSettings({ ...settings, goal: newGoalData });
                 alert("Meta definida com sucesso!");
             } catch (error) {
                 console.error("Failed to set goal", error);
@@ -815,6 +817,34 @@ const AdminView = () => {
             } catch (error) {
                 console.error("Failed to clear goal", error);
                 alert("Erro ao apagar a meta.");
+            } finally {
+                setIsSaving(false);
+            }
+        };
+
+        const handleOpenEditModal = () => {
+            if (settings?.goal) {
+                setEditingGoal({ ...settings.goal });
+                setIsEditModalOpen(true);
+            }
+        };
+
+        const handleCloseEditModal = () => {
+            setIsEditModalOpen(false);
+            setEditingGoal(null);
+        };
+
+        const handleUpdateGoal = async (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!settings || !editingGoal) return;
+            setIsSaving(true);
+            try {
+                await updateSettings({ ...settings, goal: editingGoal });
+                alert("Meta atualizada com sucesso!");
+                handleCloseEditModal();
+            } catch (error) {
+                console.error("Failed to update goal", error);
+                alert("Erro ao atualizar a meta.");
             } finally {
                 setIsSaving(false);
             }
@@ -852,42 +882,86 @@ const AdminView = () => {
     
         if (!settings) return null;
     
-        if (settings.goal) {
-            return (
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-xl font-semibold mb-2">Progresso da Meta</h3>
-                        <div className="flex justify-between items-baseline mb-1">
-                            <span className="text-base font-medium text-gray-700">Alcançado</span>
-                            <span className="text-sm font-medium text-gray-700">R$ {currentRevenue.toFixed(2)} / R$ {settings.goal.target.toFixed(2)}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-4">
-                            <div className="h-4 rounded-full" style={{ width: `${progressPercentage}%`, backgroundColor: settings.visuals.primaryColor }}></div>
-                        </div>
-                        <p className="text-right text-sm text-gray-600 mt-2">{daysRemaining} dias restantes</p>
+        const renderActiveGoal = () => (
+            <div className="space-y-6">
+                <div>
+                    <h3 className="text-xl font-semibold mb-2">Progresso da Meta</h3>
+                    <div className="flex justify-between items-baseline mb-1">
+                        <span className="text-base font-medium text-gray-700">Alcançado</span>
+                        <span className="text-sm font-medium text-gray-700">R$ {currentRevenue.toFixed(2)} / R$ {settings.goal!.target.toFixed(2)}</span>
                     </div>
-                    <button onClick={handleClearGoal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
-                        {isSaving ? 'Apagando...' : 'Apagar Meta Atual'}
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div className="h-4 rounded-full" style={{ width: `${progressPercentage}%`, backgroundColor: settings.visuals.primaryColor }}></div>
+                    </div>
+                    <p className="text-right text-sm text-gray-600 mt-2">{daysRemaining} dias restantes</p>
+                </div>
+                <div className="flex space-x-4">
+                    <button onClick={handleOpenEditModal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
+                        Editar Meta
+                    </button>
+                    <button onClick={handleClearGoal} disabled={isSaving} className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
+                        {isSaving ? 'Apagando...' : 'Apagar Meta'}
                     </button>
                 </div>
-            );
-        }
-    
-        return (
+            </div>
+        );
+
+        const renderNewGoalForm = () => (
             <div className="space-y-4">
                 <h3 className="text-xl font-semibold mb-2">Definir Nova Meta de Receita</h3>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Valor da Meta (R$)</label>
-                    <input type="number" value={target} onChange={e => setTarget(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
+                    <input type="number" value={newTarget} onChange={e => setNewTarget(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Prazo para alcançar (em dias)</label>
-                    <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
+                    <input type="number" value={newDuration} onChange={e => setNewDuration(Number(e.target.value))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
                 </div>
                 <button onClick={handleSetGoal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
                     {isSaving ? 'Salvando...' : 'Salvar Meta'}
                 </button>
             </div>
+        );
+
+        const renderEditModal = () => (
+            <Modal isOpen={isEditModalOpen} onClose={handleCloseEditModal} title="Editar Meta">
+                {editingGoal && (
+                    <form onSubmit={handleUpdateGoal} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Valor da Meta (R$)</label>
+                            <input 
+                                type="number" 
+                                value={editingGoal.target} 
+                                onChange={e => setEditingGoal(g => g ? {...g, target: Number(e.target.value)} : null)}
+                                className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Data Final</label>
+                            <input 
+                                type="date" 
+                                value={editingGoal.endDate}
+                                min={editingGoal.startDate}
+                                onChange={e => setEditingGoal(g => g ? {...g, endDate: e.target.value} : null)}
+                                className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900"
+                                required
+                            />
+                        </div>
+                        <p className="text-sm text-gray-500">Data de início: {new Date(editingGoal.startDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        <button type="submit" disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings?.visuals.primaryColor }}>
+                            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                        </button>
+                    </form>
+                )}
+            </Modal>
+        );
+    
+        return (
+            <>
+                {settings.goal ? renderActiveGoal() : renderNewGoalForm()}
+                {renderEditModal()}
+            </>
         );
     };
 
