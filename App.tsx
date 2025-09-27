@@ -854,7 +854,13 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                         <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><WhatsAppIcon className="w-6 h-6" /></a>
                         <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><InstagramIcon className="w-6 h-6" /></a>
                         {session ? (
-                            <button onClick={signOut} className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm text-white shadow-lg`} style={{ backgroundColor: settings.visuals.primaryColor }}>Sair</button>
+                            <div className="flex items-center space-x-4">
+                                <Link to="/" target="_blank" rel="noopener noreferrer" className="flex items-center text-gray-600 hover:text-gray-900 font-semibold text-sm transition-colors">
+                                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    Ver Página de Agendamento
+                                </Link>
+                                <button onClick={signOut} className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm text-white shadow-lg`} style={{ backgroundColor: settings.visuals.primaryColor }}>Sair</button>
+                            </div>
                         ) : (
                             <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
                                 <Link to="/" className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname === '/' ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname === '/' ? settings.visuals.primaryColor : 'transparent' }}>Cliente</Link>
