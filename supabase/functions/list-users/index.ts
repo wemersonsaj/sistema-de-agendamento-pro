@@ -44,13 +44,13 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers()
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers()
 
     if (error) {
       throw error
     }
 
-    return new Response(JSON.stringify({ users }), {
+    return new Response(JSON.stringify({ users: data.users }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
