@@ -866,26 +866,26 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
         <div className="min-h-screen">
             {!isLoginPage && settings && (
-                <header className="py-4 px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
+                <header className="py-4 px-4 sm:px-8 flex justify-between items-center border-b border-gray-200 shadow-sm">
                     <div className="flex items-center space-x-3">
                         {settings.visuals.logo && <img src={settings.visuals.logo} alt="Logo" className="h-10 w-auto bg-white p-1 rounded" />}
-                        <h1 className="text-2xl font-bold" style={{ color: settings.visuals.primaryColor }}>{settings.visuals.companyName}</h1>
+                        <h1 className="text-2xl font-bold hidden sm:block" style={{ color: settings.visuals.primaryColor }}>{settings.visuals.companyName}</h1>
                     </div>
-                    <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-2 sm:space-x-4">
                         <a href={settings.socials.whatsapp} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><WhatsAppIcon className="w-6 h-6" /></a>
                         <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" title="Instagram" className="text-gray-500 transition-colors" onMouseOver={e => e.currentTarget.style.color = settings.visuals.primaryColor} onMouseOut={e => e.currentTarget.style.color = ''}><InstagramIcon className="w-6 h-6" /></a>
                         {session ? (
-                            <div className="flex items-center space-x-4">
-                                <Link to="/" target="_blank" rel="noopener noreferrer" className="flex items-center text-gray-600 hover:text-gray-900 font-semibold text-sm transition-colors">
-                                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                                    Ver Página de Agendamento
+                            <div className="flex items-center space-x-2 sm:space-x-4">
+                                <Link to="/" target="_blank" rel="noopener noreferrer" title="Ver Página de Agendamento" className="flex items-center text-gray-600 hover:text-gray-900 font-semibold text-sm transition-colors">
+                                    <svg className="w-5 h-5 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    <span className="hidden sm:inline">Ver Página de Agendamento</span>
                                 </Link>
-                                <button onClick={signOut} className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm text-white shadow-lg`} style={{ backgroundColor: settings.visuals.primaryColor }}>Sair</button>
+                                <button onClick={signOut} className={`px-3 sm:px-4 py-2 rounded-md font-semibold transition-colors text-sm text-white shadow-lg`} style={{ backgroundColor: settings.visuals.primaryColor }}>Sair</button>
                             </div>
                         ) : (
                             <div className="flex items-center space-x-2 p-1 rounded-lg bg-gray-100">
-                                <Link to="/" className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname === '/' ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname === '/' ? settings.visuals.primaryColor : 'transparent' }}>Cliente</Link>
-                                <Link to="/admin" className={`px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname.startsWith('/admin') ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname.startsWith('/admin') ? settings.visuals.primaryColor : 'transparent' }}>Admin</Link>
+                                <Link to="/" className={`px-3 sm:px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname === '/' ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname === '/' ? settings.visuals.primaryColor : 'transparent' }}>Cliente</Link>
+                                <Link to="/admin" className={`px-3 sm:px-4 py-2 rounded-md font-semibold transition-colors text-sm ${location.pathname.startsWith('/admin') ? `text-white shadow-lg` : 'text-gray-500'}`} style={{ backgroundColor: location.pathname.startsWith('/admin') ? settings.visuals.primaryColor : 'transparent' }}>Admin</Link>
                             </div>
                         )}
                     </div>
