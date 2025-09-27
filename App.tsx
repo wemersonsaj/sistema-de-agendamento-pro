@@ -379,8 +379,10 @@ const AdminView = () => {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<any | null>(null);
     const [modalType, setModalType] = React.useState<'service' | 'employee' | 'appointment' | null>(null);
-    const [reportFilter, setReportFilter] = React.useState({ startDate: '', endDate: '' });
+    const [reportFilter, setReportFilter] = React.useState({ startDate: '', endDate: '', employeeId: 'all', serviceId: 'all' });
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = React.useState(false);
+    const [reportData, setReportData] = React.useState<{ appointments: Appointment[], revenue: number } | null>(null);
 
     const handleOpenModal = (type: 'service' | 'employee' | 'appointment', item: any | null = null) => {
         setModalType(type);
@@ -411,6 +413,35 @@ const AdminView = () => {
     const handleTabSelection = (tab: AdminTab) => {
         setActiveTab(tab);
         setIsMobileMenuOpen(false);
+    };
+
+    const handleGenerateReport = () => {
+        let filtered = [...appointments];
+
+        if (reportFilter.startDate && reportFilter.endDate) {
+            const start = new Date(reportFilter.startDate + 'T00:00:00');
+            const end = new Date(reportFilter.endDate + 'T23:59:59');
+            filtered = filtered.filter(apt => {
+                const aptDate = new Date(`${apt.date}T${apt.time}`);
+                return aptDate >= start && aptDate <= end;
+            });
+        }
+
+        if (reportFilter.employeeId !== 'all') {
+            filtered = filtered.filter(apt => apt.employeeId === reportFilter.employeeId);
+        }
+
+        if (reportFilter.serviceId !== 'all') {
+            filtered = filtered.filter(apt => apt.serviceId === reportFilter.serviceId);
+        }
+
+        const totalRevenue = filtered.reduce((acc, apt) => {
+            const service = services.find(s => s.id === apt.serviceId);
+            return acc + (service ? service.price : 0);
+        }, 0);
+
+        setReportData({ appointments: filtered, revenue: totalRevenue });
+        setIsReportModalOpen(true);
     };
 
     const AdminModal: React.FC = () => {
@@ -733,51 +764,60 @@ const AdminView = () => {
     };
 
     const sortedAppointments = React.useMemo(() => [...appointments].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()), [appointments]);
-    const filteredAppointments = React.useMemo(() => {
-        if (!reportFilter.startDate || !reportFilter.endDate) return sortedAppointments;
-        const start = new Date(reportFilter.startDate + 'T00:00:00');
-        const end = new Date(reportFilter.endDate + 'T23:59:59');
-        return sortedAppointments.filter(apt => {
-            const aptDate = new Date(`${apt.date}T${apt.time}`);
-            return aptDate >= start && aptDate <= end;
-        });
-    }, [sortedAppointments, reportFilter]);
 
     const renderTabContent = () => {
         switch (activeTab) {
             case 'appointments':
+                return (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="border-b border-gray-300"><tr><th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th><th className="p-2">Ações</th></tr></thead>
+                            <tbody>
+                                {sortedAppointments.map(apt => (
+                                    <tr key={apt.id} className="border-b border-gray-200">
+                                        <td className="p-2">{apt.customerName}</td>
+                                        <td className="p-2">{new Date(`${apt.date}T${apt.time}`).toLocaleString('pt-BR')}</td>
+                                        <td className="p-2">{services.find(s => s.id === apt.serviceId)?.name || 'N/A'}</td>
+                                        <td className="p-2">{employees.find(e => e.id === apt.employeeId)?.name || 'N/A'}</td>
+                                        <td className="p-2 flex space-x-2">
+                                            <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700"><WhatsAppIcon className="w-5 h-5"/></a>
+                                            <button onClick={() => handleOpenModal('appointment', apt)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => handleDelete('appointment', apt.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
             case 'reports':
-                const appointmentsToDisplay = activeTab === 'reports' ? filteredAppointments : sortedAppointments;
                 return (
                     <div>
-                         {activeTab === 'reports' && (
-                            <div className="flex flex-wrap gap-4 mb-4 items-center p-4 bg-gray-100 rounded">
-                                <label>De:</label>
-                                <input type="date" value={reportFilter.startDate} onChange={e => setReportFilter(f => ({...f, startDate: e.target.value}))} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
-                                <label>Até:</label>
-                                <input type="date" value={reportFilter.endDate} onChange={e => setReportFilter(f => ({...f, endDate: e.target.value}))} className="p-2 rounded bg-gray-50 border border-gray-300 text-gray-900" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-4 bg-gray-100 rounded">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">De:</label>
+                                <input type="date" value={reportFilter.startDate} onChange={e => setReportFilter(f => ({...f, startDate: e.target.value}))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
                             </div>
-                        )}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="border-b border-gray-300"><tr><th className="p-2">Cliente</th><th className="p-2">Data/Hora</th><th className="p-2">Serviço</th><th className="p-2">Profissional</th>{activeTab === 'appointments' && <th className="p-2">Ações</th>}</tr></thead>
-                                <tbody>
-                                    {appointmentsToDisplay.map(apt => (
-                                        <tr key={apt.id} className="border-b border-gray-200">
-                                            <td className="p-2">{apt.customerName}</td>
-                                            <td className="p-2">{new Date(`${apt.date}T${apt.time}`).toLocaleString('pt-BR')}</td>
-                                            <td className="p-2">{services.find(s => s.id === apt.serviceId)?.name || 'N/A'}</td>
-                                            <td className="p-2">{employees.find(e => e.id === apt.employeeId)?.name || 'N/A'}</td>
-                                            {activeTab === 'appointments' && <td className="p-2 flex space-x-2">
-                                                <a href={`https://wa.me/${apt.customerWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-green-500 hover:text-green-700"><WhatsAppIcon className="w-5 h-5"/></a>
-                                                <button onClick={() => handleOpenModal('appointment', apt)} className="text-blue-500 hover:text-blue-700"><PencilIcon className="w-5 h-5"/></button>
-                                                <button onClick={() => handleDelete('appointment', apt.id)} className="text-red-500 hover:text-red-700"><TrashIcon className="w-5 h-5"/></button>
-                                            </td>}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Até:</label>
+                                <input type="date" value={reportFilter.endDate} onChange={e => setReportFilter(f => ({...f, endDate: e.target.value}))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Funcionário:</label>
+                                <select value={reportFilter.employeeId} onChange={e => setReportFilter(f => ({...f, employeeId: e.target.value}))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900">
+                                    <option value="all">Todos</option>
+                                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Serviço:</label>
+                                <select value={reportFilter.serviceId} onChange={e => setReportFilter(f => ({...f, serviceId: e.target.value}))} className="mt-1 p-2 w-full rounded bg-white border border-gray-300 text-gray-900">
+                                    <option value="all">Todos</option>
+                                    {services.map(srv => <option key={srv.id} value={srv.id}>{srv.name}</option>)}
+                                </select>
+                            </div>
                         </div>
+                        <button onClick={handleGenerateReport} className="w-full text-white font-bold py-2 px-4 rounded" style={{ backgroundColor: settings?.visuals.primaryColor }}>Gerar Relatório</button>
                     </div>
                 );
             case 'schedule': return <CustomerView />;
@@ -805,6 +845,50 @@ const AdminView = () => {
     const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
       <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
     );
+
+    const ReportModal = () => {
+        if (!isReportModalOpen || !reportData) return null;
+    
+        return (
+            <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Relatório de Agendamentos">
+                <div className="space-y-4" id="printable-report">
+                    <div className="p-4 bg-gray-100 rounded-lg">
+                        <h4 className="text-lg font-bold">Total de Atendimentos: <span className="font-normal">{reportData.appointments.length}</span></h4>
+                        <h4 className="text-lg font-bold">Receita Total: <span className="font-normal">R$ {reportData.revenue.toFixed(2).replace('.', ',')}</span></h4>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto border rounded-lg">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="p-2 font-semibold">Cliente</th>
+                                    <th className="p-2 font-semibold">Data</th>
+                                    <th className="p-2 font-semibold">Serviço</th>
+                                    <th className="p-2 font-semibold">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {reportData.appointments.length > 0 ? reportData.appointments.map(apt => {
+                                    const service = services.find(s => s.id === apt.serviceId);
+                                    return (
+                                        <tr key={apt.id}>
+                                            <td className="p-2">{apt.customerName}</td>
+                                            <td className="p-2">{new Date(`${apt.date}T${apt.time}`).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                                            <td className="p-2">{service?.name || 'N/A'}</td>
+                                            <td className="p-2">R$ {service ? service.price.toFixed(2).replace('.', ',') : '0,00'}</td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan={4} className="p-4 text-center text-gray-500">Nenhum agendamento encontrado para os filtros selecionados.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </Modal>
+        );
+    };
 
     return (
         <div className="max-w-7xl mx-auto p-4 md:p-8">
@@ -840,6 +924,7 @@ const AdminView = () => {
                 </main>
             </div>
             <AdminModal />
+            <ReportModal />
         </div>
     );
 };
