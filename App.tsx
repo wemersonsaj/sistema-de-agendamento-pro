@@ -808,7 +808,7 @@ const AdminView = () => {
         };
     
         const handleClearGoal = async () => {
-            if (!settings || !window.confirm("Tem certeza que deseja apagar a meta atual e definir uma nova?")) return;
+            if (!settings || !window.confirm("Tem certeza que deseja apagar a meta atual?")) return;
             setIsSaving(true);
             try {
                 await updateSettings({ ...settings, goal: null });
@@ -867,7 +867,7 @@ const AdminView = () => {
                         <p className="text-right text-sm text-gray-600 mt-2">{daysRemaining} dias restantes</p>
                     </div>
                     <button onClick={handleClearGoal} disabled={isSaving} className="w-full text-white font-bold py-2 px-4 rounded disabled:opacity-50" style={{ backgroundColor: settings.visuals.primaryColor }}>
-                        {isSaving ? 'Apagando...' : 'Definir Nova Meta'}
+                        {isSaving ? 'Apagando...' : 'Apagar Meta Atual'}
                     </button>
                 </div>
             );
